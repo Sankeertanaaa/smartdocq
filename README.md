@@ -38,8 +38,8 @@ An intelligent document analysis platform that converts static documents into in
 
 1. **Clone the repository**
 ```bash
-git clone <repository-url>
-cd smartdoc
+git clone https://github.com/Sankeertanaaa/smartdocq.git
+cd smartdoc3
 ```
 
 2. **Setup Backend**
@@ -116,4 +116,4 @@ smartdoc/
 
 ## License
 
-MIT License - see LICENSE file for details 
+MIT License - see LICENSE file for details
