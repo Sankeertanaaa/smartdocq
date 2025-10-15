@@ -32,10 +32,18 @@ async def log_requests(request: Request, call_next):
     
     return response
 
-# CORS middleware
+# CORS middleware - Allow frontend origins
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:60369",
+    "https://smartdocq.vercel.app",  # Your Vercel deployment
+    "https://*.vercel.app",  # Any Vercel preview deployments
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://127.0.0.1:60369"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
