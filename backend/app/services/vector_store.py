@@ -15,43 +15,53 @@ os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
 
 class VectorStore:
     def __init__(self):
-        # Initialize ChromaDB
-        self.client = chromadb.PersistentClient(
-            path=settings.CHROMA_PERSIST_DIRECTORY,
-            settings=ChromaSettings(
-                anonymized_telemetry=False
-            )
-        )
+        import shutil
         
         # Get or create collection with error handling for schema issues
-        try:
-            self.collection = self.client.get_or_create_collection(
-                name="smartdoc_chunks",
-                metadata={"hnsw:space": "cosine"}
-            )
-        except Exception as e:
-            error_msg = str(e).lower()
-            # Handle database schema errors by deleting and recreating
-            if "no such column" in error_msg or "topic" in error_msg or "schema" in error_msg:
-                print(f"⚠️  ChromaDB schema error detected: {str(e)}")
-                print("🔄 Resetting ChromaDB to fix schema...")
-                try:
-                    # Try to delete the old collection
-                    try:
-                        self.client.delete_collection("smartdoc_chunks")
-                    except:
-                        pass
-                    # Recreate collection
-                    self.collection = self.client.create_collection(
-                        name="smartdoc_chunks",
-                        metadata={"hnsw:space": "cosine"}
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                # Initialize ChromaDB
+                self.client = chromadb.PersistentClient(
+                    path=settings.CHROMA_PERSIST_DIRECTORY,
+                    settings=ChromaSettings(
+                        anonymized_telemetry=False
                     )
-                    print("✅ ChromaDB reset successful")
-                except Exception as reset_error:
-                    print(f"❌ Failed to reset ChromaDB: {str(reset_error)}")
+                )
+                
+                self.collection = self.client.get_or_create_collection(
+                    name="smartdoc_chunks",
+                    metadata={"hnsw:space": "cosine"}
+                )
+                break  # Success, exit retry loop
+                
+            except Exception as e:
+                error_msg = str(e).lower()
+                # Handle database schema errors by completely removing the database
+                if ("no such column" in error_msg or "topic" in error_msg or 
+                    "schema" in error_msg or "sqlite" in error_msg):
+                    
+                    if attempt < max_retries - 1:
+                        print(f"⚠️  ChromaDB schema error detected (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                        print("🔄 Deleting entire ChromaDB directory to fix schema...")
+                        try:
+                            # Delete the entire ChromaDB directory
+                            if os.path.exists(settings.CHROMA_PERSIST_DIRECTORY):
+                                shutil.rmtree(settings.CHROMA_PERSIST_DIRECTORY)
+                                print(f"✅ Deleted {settings.CHROMA_PERSIST_DIRECTORY}")
+                            # Recreate the directory
+                            os.makedirs(settings.CHROMA_PERSIST_DIRECTORY, exist_ok=True)
+                            print("✅ ChromaDB directory reset, retrying...")
+                            continue  # Retry initialization
+                        except Exception as reset_error:
+                            print(f"❌ Failed to reset ChromaDB directory: {str(reset_error)}")
+                            if attempt == max_retries - 1:
+                                raise
+                    else:
+                        print(f"❌ Failed after {max_retries} attempts")
+                        raise
+                else:
                     raise
-            else:
-                raise
         
         # Initialize Gemini for embeddings
         genai.configure(api_key=settings.GOOGLE_API_KEY)
