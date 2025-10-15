@@ -23,11 +23,35 @@ class VectorStore:
             )
         )
         
-        # Get or create collection
-        self.collection = self.client.get_or_create_collection(
-            name="smartdoc_chunks",
-            metadata={"hnsw:space": "cosine"}
-        )
+        # Get or create collection with error handling for schema issues
+        try:
+            self.collection = self.client.get_or_create_collection(
+                name="smartdoc_chunks",
+                metadata={"hnsw:space": "cosine"}
+            )
+        except Exception as e:
+            error_msg = str(e).lower()
+            # Handle database schema errors by deleting and recreating
+            if "no such column" in error_msg or "topic" in error_msg or "schema" in error_msg:
+                print(f"⚠️  ChromaDB schema error detected: {str(e)}")
+                print("🔄 Resetting ChromaDB to fix schema...")
+                try:
+                    # Try to delete the old collection
+                    try:
+                        self.client.delete_collection("smartdoc_chunks")
+                    except:
+                        pass
+                    # Recreate collection
+                    self.collection = self.client.create_collection(
+                        name="smartdoc_chunks",
+                        metadata={"hnsw:space": "cosine"}
+                    )
+                    print("✅ ChromaDB reset successful")
+                except Exception as reset_error:
+                    print(f"❌ Failed to reset ChromaDB: {str(reset_error)}")
+                    raise
+            else:
+                raise
         
         # Initialize Gemini for embeddings
         genai.configure(api_key=settings.GOOGLE_API_KEY)
