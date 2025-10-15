@@ -3,7 +3,7 @@ services:
     name: smartdoc-backend
     runtime: python
     env: python
-    buildCommand: cd backend && pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+    buildCommand: bash build.sh
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
