@@ -1,0 +1,18 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+python-dotenv==1.0.0
+google-generativeai==0.3.2
+chromadb==0.4.18
+# pymupdf==1.23.8  # Commented out due to Windows encoding issues
+PyPDF2==3.0.1  # Alternative PDF library
+python-docx==1.1.0
+langchain==0.0.350
+langchain-google-genai==0.0.5
+pydantic==2.5.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+aiofiles==23.2.1
+httpx==0.25.2
+numpy>=1.26.0  # Updated for Python 3.13 compatibility
+sentence-transformers==2.2.2 
