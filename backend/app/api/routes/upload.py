@@ -142,6 +142,28 @@ async def upload_document(
             print(f"Vector store operation failed: {str(e)}")
             raise HTTPException(status_code=422, detail=f"Vector store operation failed: {str(e)}")
         
+        # Save document metadata to MongoDB
+        try:
+            from app.services.database import get_documents_collection
+            from datetime import datetime
+            
+            documents_collection = get_documents_collection()
+            document_record = {
+                "document_id": result["document_id"],
+                "filename": result["filename"],
+                "original_filename": file.filename,
+                "file_size": result["file_size"],
+                "user_id": user_id,
+                "uploaded_at": datetime.utcnow(),
+                "status": "processed",
+                "chunk_count": len(result["chunks"])
+            }
+            await documents_collection.insert_one(document_record)
+            print(f"Document record saved to MongoDB: {result['document_id']}")
+        except Exception as e:
+            print(f"Warning: Failed to save document to MongoDB: {str(e)}")
+            # Don't fail the upload if MongoDB save fails
+        
         # Clean up temporary file
         if os.path.exists(file_path):
             os.remove(file_path)
