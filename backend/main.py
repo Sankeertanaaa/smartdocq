@@ -46,9 +46,16 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+# Handle preflight OPTIONS requests explicitly
+@app.options("/{path:path}")
+async def handle_options(path: str):
+    """Handle CORS preflight requests"""
+    return {"message": "OK"}
 
 # Include API routes
 # Startup and shutdown events

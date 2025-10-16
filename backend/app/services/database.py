@@ -75,25 +75,25 @@ async def create_indexes():
 # Collection getters
 def get_users_collection():
     if db.database is None:
-        raise Exception("Database not connected")
+        return None
     return db.database.users
 
 def get_sessions_collection():
     if db.database is None:
-        raise Exception("Database not connected")
+        return None
     return db.database.sessions
 
 def get_messages_collection():
     if db.database is None:
-        raise Exception("Database not connected")
+        return None
     return db.database.messages
 
 def get_feedback_collection():
     if db.database is None:
-        raise Exception("Database not connected")
+        return None
     return db.database.feedback
 
 def get_documents_collection():
     if db.database is None:
-        raise Exception("Database not connected")
+        return None
     return db.database.documents

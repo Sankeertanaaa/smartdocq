@@ -58,11 +58,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 async def get_user_by_email(email: str) -> Optional[dict]:
     """Get user by email from database"""
     users_collection = get_users_collection()
+    if users_collection is None:
+        return None
     return await users_collection.find_one({"email": email.lower()})
 
 async def get_user_by_id(user_id: str) -> Optional[dict]:
     """Get user by ID from database"""
     users_collection = get_users_collection()
+    if users_collection is None:
+        return None
     from bson import ObjectId
     try:
         print(f"🔍 Looking up user by ID: {user_id}")
@@ -125,6 +129,11 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 async def register(user_data: UserCreate):
     """Register a new user"""
     users_collection = get_users_collection()
+    if users_collection is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Registration service unavailable (database not connected)"
+        )
     
     # Check if email already exists
     existing_user = await users_collection.find_one({"email": user_data.email.lower()})
@@ -176,6 +185,11 @@ async def register(user_data: UserCreate):
 async def login(user_credentials: UserLogin):
     """Login user and return JWT token"""
     users_collection = get_users_collection()
+    if users_collection is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service unavailable (database not connected)"
+        )
     
     # Get user from database
     user_doc = await users_collection.find_one({"email": user_credentials.email.lower()})
@@ -300,33 +314,41 @@ async def deactivate_user(user_id: str, current_user: dict = Depends(get_current
 # Create a default admin user for testing
 async def create_default_admin():
     """Create a default admin user for testing purposes"""
-    admin_email = "admin@smartdoc.com"
-    users_collection = get_users_collection()
-    
-    existing_admin = await users_collection.find_one({"email": admin_email})
-    if not existing_admin:
-        admin_user = UserModel(
-            full_name="System Administrator",
-            email=admin_email,
-            hashed_password=hash_password("admin123"),
-            role="admin",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        await users_collection.insert_one(admin_user.dict(by_alias=True))
-        print(f"Default admin user created: {admin_email} / admin123")
-    else:
-        # Ensure the existing admin remains accessible in development
-        from bson import ObjectId
-        await users_collection.update_one(
-            {"_id": existing_admin["_id"]},
-            {
-                "$set": {
-                    "role": "admin",
-                    "is_active": True,
-                    "hashed_password": hash_password("admin123"),
-                    "updated_at": datetime.utcnow(),
+    try:
+        admin_email = "admin@smartdoc.com"
+        users_collection = get_users_collection()
+        
+        if users_collection is None:
+            print("⚠️  Skipping admin user creation (MongoDB not available)")
+            return
+        
+        existing_admin = await users_collection.find_one({"email": admin_email})
+        if not existing_admin:
+            admin_user = UserModel(
+                full_name="System Administrator",
+                email=admin_email,
+                hashed_password=hash_password("admin123"),
+                role="admin",
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            await users_collection.insert_one(admin_user.dict(by_alias=True))
+            print(f"Default admin user created: {admin_email} / admin123")
+        else:
+            # Ensure the existing admin remains accessible in development
+            from bson import ObjectId
+            await users_collection.update_one(
+                {"_id": existing_admin["_id"]},
+                {
+                    "$set": {
+                        "role": "admin",
+                        "is_active": True,
+                        "hashed_password": hash_password("admin123"),
+                        "updated_at": datetime.utcnow(),
+                    }
                 }
-            }
-        )
-        print(f"Default admin ensured/updated: {admin_email} / admin123")
+            )
+            print(f"Default admin ensured/updated: {admin_email} / admin123")
+    except Exception as e:
+        print(f"⚠️  Failed to create default admin (likely MongoDB not available): {e}")
+        # Don't raise - allow app to continue without admin user
