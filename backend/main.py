@@ -52,12 +52,6 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Handle preflight OPTIONS requests explicitly
-@app.options("/{path:path}")
-async def handle_options(path: str):
-    """Handle CORS preflight requests"""
-    return {"message": "OK"}
-
 # Include API routes
 # Startup and shutdown events
 @app.on_event("startup")
