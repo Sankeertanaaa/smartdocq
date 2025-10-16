@@ -9,8 +9,24 @@ from typing import Optional
 from datetime import datetime
 
 router = APIRouter()
-vector_store = VectorStore()
-ai_service = AIService()
+_vector_store = None  # Lazy initialization
+_ai_service = None  # Lazy initialization
+
+def get_vector_store():
+    """Lazy initialization of VectorStore"""
+    global _vector_store
+    if _vector_store is None:
+        print("🔧 Initializing VectorStore for chat...")
+        _vector_store = VectorStore()
+    return _vector_store
+
+def get_ai_service():
+    """Lazy initialization of AIService"""
+    global _ai_service
+    if _ai_service is None:
+        print("🔧 Initializing AIService for chat...")
+        _ai_service = AIService()
+    return _ai_service
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_document(request: ChatRequest, current_user: dict = Depends(get_current_user)):
@@ -82,7 +98,7 @@ async def chat_with_document(request: ChatRequest, current_user: dict = Depends(
             )
         
         # Generate answer using AI
-        ai_response = ai_service.generate_answer(
+        ai_response = get_ai_service().generate_answer(
             question=request.question,
             context_chunks=similar_chunks,
             session_id=request.session_id
@@ -190,7 +206,7 @@ async def generate_follow_up_questions(request: ChatRequest, current_user: dict 
             return {"follow_up_questions": []}
         
         # Generate follow-up questions
-        follow_up_questions = ai_service.generate_follow_up_questions(
+        follow_up_questions = get_ai_service().generate_follow_up_questions(
             context_chunks=similar_chunks,
             current_question=request.question
         )
@@ -206,18 +222,17 @@ async def summarize_document(document_id: Optional[str] = None, current_user: di
     Generate a summary of the uploaded document
     """
     try:
-        # Get all chunks for the document
         if document_id:
-            chunks = vector_store.get_document_chunks(document_id)
+            chunks = get_vector_store().get_document_chunks(document_id)
         else:
             # Get some random chunks for general summary
-            chunks = vector_store.search_similar("summary", n_results=10)
+            chunks = get_vector_store().search_similar("summary", n_results=10)
         
         if not chunks:
             return {"summary": "No document content available for summarization."}
         
         # Generate summary
-        summary = ai_service.summarize_document(chunks)
+        summary = get_ai_service().summarize_document(chunks)
         
         return {"summary": summary}
         
@@ -230,18 +245,17 @@ async def extract_key_points(document_id: Optional[str] = None, current_user: di
     Extract key points from the uploaded document
     """
     try:
-        # Get all chunks for the document
         if document_id:
-            chunks = vector_store.get_document_chunks(document_id)
+            chunks = get_vector_store().get_document_chunks(document_id)
         else:
             # Get some random chunks for key points
-            chunks = vector_store.search_similar("key points", n_results=10)
+            chunks = get_vector_store().search_similar("key points", n_results=10)
         
         if not chunks:
             return {"key_points": ["No document content available for key point extraction."]}
         
         # Extract key points
-        key_points = ai_service.extract_key_points(chunks)
+        key_points = get_ai_service().extract_key_points(chunks)
         
         return {"key_points": key_points}
         

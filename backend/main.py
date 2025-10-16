@@ -37,7 +37,8 @@ allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:60369",
-    "https://smartdocq.vercel.app",  # Your Vercel deployment
+    "https://smartdocq.vercel.app",  # Original Vercel deployment
+    "https://smartdocq-indol.vercel.app",  # Your specific Vercel deployment
     "https://*.vercel.app",  # Any Vercel preview deployments
 ]
 
