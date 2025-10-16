@@ -13,8 +13,16 @@ import uuid
 
 router = APIRouter()
 document_processor = DocumentProcessor()
-vector_store = VectorStore()
+_vector_store = None  # Lazy initialization
 security = HTTPBearer(auto_error=False)
+
+def get_vector_store():
+    """Lazy initialization of VectorStore to avoid blocking app startup"""
+    global _vector_store
+    if _vector_store is None:
+        print("🔧 Initializing VectorStore (lazy)...")
+        _vector_store = VectorStore()
+    return _vector_store
 
 @router.get("/test")
 async def test_endpoint():
@@ -136,7 +144,7 @@ async def upload_document(
         
         # Add to vector store
         try:
-            success = vector_store.add_documents(result["chunks"])
+            success = get_vector_store().add_documents(result["chunks"])
             print(f"Vector store operation completed: {success}")
         except Exception as e:
             print(f"Vector store operation failed: {str(e)}")
@@ -204,7 +212,7 @@ async def process_document_background(file_path: str, filename: str):
         result = document_processor.process_document(file_path, filename)
         
         # Add to vector store
-        success = vector_store.add_documents(result["chunks"])
+        success = get_vector_store().add_documents(result["chunks"])
         
         if not success:
             print(f"Failed to add document {filename} to vector store")
@@ -227,8 +235,8 @@ async def list_documents(current_user: Optional[dict] = Depends(get_current_user
     try:
         from app.services.database import get_sessions_collection
         
-        stats = vector_store.get_collection_stats()
-        all_docs = vector_store.list_documents()
+        stats = get_vector_store().get_collection_stats()
+        all_docs = get_vector_store().list_documents()
         
         print(f"📚 Documents endpoint called")
         print(f"   Total docs in vector store: {len(all_docs)}")
@@ -276,7 +284,7 @@ async def list_documents(current_user: Optional[dict] = Depends(get_current_user
             doc_id = doc["document_id"]
             
             # Check if document belongs to user by checking chunks
-            doc_chunks = vector_store.get_document_chunks(doc_id)
+            doc_chunks = get_vector_store().get_document_chunks(doc_id)
             print(f"      Doc {doc_id[:20]}... has {len(doc_chunks)} chunks")
             
             if doc_chunks:
@@ -297,7 +305,7 @@ async def list_documents(current_user: Optional[dict] = Depends(get_current_user
         print(f"   📊 Returning {len(user_docs)} documents for user")
         
         return {
-            "total_chunks": len([chunk for doc in user_docs for chunk in vector_store.get_document_chunks(doc["document_id"])]),
+            "total_chunks": len([chunk for doc in user_docs for chunk in get_vector_store().get_document_chunks(doc["document_id"])]),
             "collection_name": stats["collection_name"],
             "documents": user_docs
         }
@@ -313,7 +321,7 @@ async def delete_document(document_id: str):
     Delete a document and all its chunks
     """
     try:
-        success = vector_store.delete_document(document_id)
+        success = get_vector_store().delete_document(document_id)
         if success:
             return {"message": f"Document {document_id} deleted successfully"}
         else:
