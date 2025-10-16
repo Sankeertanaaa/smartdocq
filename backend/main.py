@@ -54,8 +54,12 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     await connect_to_mongo()
-    # Create default admin user
-    await auth.create_default_admin()
+    # Create default admin user (only if MongoDB is connected)
+    from app.services.database import db
+    if db.database is not None:
+        await auth.create_default_admin()
+    else:
+        print("⚠️  Skipping admin user creation (MongoDB not available)")
 
 @app.on_event("shutdown")
 async def shutdown_event():
