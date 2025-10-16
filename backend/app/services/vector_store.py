@@ -16,12 +16,44 @@ os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
 class VectorStore:
     def __init__(self):
         import shutil
+        import time
         
-        # Get or create collection with error handling for schema issues
+        # Check for corrupted database and delete it preemptively
+        chroma_db_file = os.path.join(settings.CHROMA_PERSIST_DIRECTORY, "chroma.sqlite3")
+        if os.path.exists(chroma_db_file):
+            print(f"🔍 Found existing ChromaDB database at {chroma_db_file}")
+            # Try to detect if it's corrupted by checking for the 'topic' column issue
+            try:
+                import sqlite3
+                conn = sqlite3.connect(chroma_db_file)
+                cursor = conn.cursor()
+                # Try to query the collections table
+                cursor.execute("SELECT * FROM collections LIMIT 1")
+                conn.close()
+                print("✅ ChromaDB database appears valid")
+            except sqlite3.OperationalError as db_error:
+                if "no such column" in str(db_error).lower() or "topic" in str(db_error).lower():
+                    print(f"⚠️  Detected corrupted ChromaDB database: {str(db_error)}")
+                    print("🔄 Deleting corrupted ChromaDB directory...")
+                    try:
+                        if os.path.exists(settings.CHROMA_PERSIST_DIRECTORY):
+                            shutil.rmtree(settings.CHROMA_PERSIST_DIRECTORY)
+                            print(f"✅ Deleted {settings.CHROMA_PERSIST_DIRECTORY}")
+                        time.sleep(0.5)  # Brief pause
+                        os.makedirs(settings.CHROMA_PERSIST_DIRECTORY, exist_ok=True)
+                        print("✅ Created fresh ChromaDB directory")
+                    except Exception as cleanup_error:
+                        print(f"❌ Failed to cleanup: {str(cleanup_error)}")
+                else:
+                    conn.close()
+            except Exception as check_error:
+                print(f"⚠️  Could not check database: {str(check_error)}")
+        
+        # Initialize ChromaDB with retry logic
         max_retries = 2
         for attempt in range(max_retries):
             try:
-                # Initialize ChromaDB
+                print(f"🔧 Initializing ChromaDB (attempt {attempt + 1}/{max_retries})...")
                 self.client = chromadb.PersistentClient(
                     path=settings.CHROMA_PERSIST_DIRECTORY,
                     settings=ChromaSettings(
@@ -33,22 +65,25 @@ class VectorStore:
                     name="smartdoc_chunks",
                     metadata={"hnsw:space": "cosine"}
                 )
+                print("✅ ChromaDB initialized successfully")
                 break  # Success, exit retry loop
                 
             except Exception as e:
                 error_msg = str(e).lower()
+                print(f"❌ ChromaDB initialization error: {str(e)}")
+                
                 # Handle database schema errors by completely removing the database
                 if ("no such column" in error_msg or "topic" in error_msg or 
-                    "schema" in error_msg or "sqlite" in error_msg):
+                    "schema" in error_msg or "sqlite" in error_msg or "operational" in error_msg):
                     
                     if attempt < max_retries - 1:
-                        print(f"⚠️  ChromaDB schema error detected (attempt {attempt + 1}/{max_retries}): {str(e)}")
-                        print("🔄 Deleting entire ChromaDB directory to fix schema...")
+                        print(f"🔄 Attempting to fix by deleting ChromaDB directory...")
                         try:
                             # Delete the entire ChromaDB directory
                             if os.path.exists(settings.CHROMA_PERSIST_DIRECTORY):
                                 shutil.rmtree(settings.CHROMA_PERSIST_DIRECTORY)
                                 print(f"✅ Deleted {settings.CHROMA_PERSIST_DIRECTORY}")
+                            time.sleep(0.5)  # Brief pause
                             # Recreate the directory
                             os.makedirs(settings.CHROMA_PERSIST_DIRECTORY, exist_ok=True)
                             print("✅ ChromaDB directory reset, retrying...")
