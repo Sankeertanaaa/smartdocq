@@ -32,6 +32,8 @@ async def log_requests(request: Request, call_next):
     
     return response
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # CORS middleware - Allow frontend origins
 allowed_origins = [
     "http://localhost:3000",
@@ -43,6 +45,8 @@ allowed_origins = [
     "https://*.vercel.app",  # Any Vercel preview deployments
 ]
 
+print(f"🔧 CORS: Allowing origins: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -51,6 +55,8 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+print("✅ CORS middleware configured")
 
 # Include API routes
 # Startup and shutdown events
