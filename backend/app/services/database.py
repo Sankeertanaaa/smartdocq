@@ -27,8 +27,11 @@ async def connect_to_mongo():
         await create_indexes()
         
     except Exception as e:
-        logger.error(f"Failed to connect to MongoDB: {e}")
-        raise
+        logger.warning(f"Failed to connect to MongoDB: {e}")
+        logger.warning("⚠️  App will continue without MongoDB (some features may not work)")
+        # Don't raise - allow app to start without MongoDB
+        db.client = None
+        db.database = None
 
 async def close_mongo_connection():
     """Close database connection"""
