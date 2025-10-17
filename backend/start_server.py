@@ -17,8 +17,8 @@ def check_dependencies():
         'pydantic',
         'motor',
         'pymongo',
-        'google.generativeai',
-        'chromadb'
+        'chromadb',
+        'sentence_transformers'
     ]
     
     missing = []
@@ -40,7 +40,6 @@ def setup_environment():
     """Setup environment variables"""
     # Set default environment variables if not present
     env_vars = {
-        'GOOGLE_API_KEY': 'your_google_api_key_here',
         'MONGODB_URL': 'mongodb://localhost:27017',
         'MONGODB_DATABASE': 'smartdocq',
         'SECRET_KEY': 'your-secret-key-here-change-in-production',

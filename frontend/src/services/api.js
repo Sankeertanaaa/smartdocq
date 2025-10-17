@@ -40,10 +40,25 @@ api.interceptors.response.use(
       console.error('API Error:', error);
     }
     
-    // Always suppress 401 errors from token verification to avoid console spam
+    // Handle 401 errors from token verification
     if (error?.response?.status === 401 && error?.config?.url?.includes('/auth/verify')) {
-      // Silent fail for token verification
+      // Clear invalid/expired token
+      console.log('Token verification failed - clearing token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Silent fail for token verification - let the app handle redirect
       return Promise.reject(error);
+    }
+    
+    // Handle other 401 errors (expired token during API calls)
+    if (error?.response?.status === 401) {
+      console.log('Unauthorized - clearing token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Redirect to login if not already there
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+        window.location.href = '/login';
+      }
     }
     
     return Promise.reject(error);

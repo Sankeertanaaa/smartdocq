@@ -51,7 +51,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
@@ -82,9 +82,11 @@ app.include_router(feedback.router, prefix="/api", tags=["feedback"])
 app.include_router(demo.router, prefix="/api/demo", tags=["demo"])
 
 @app.get("/")
+@app.head("/")
 async def root():
     return {"message": "SmartDocQ API is running!"}
 
 @app.get("/health")
+@app.head("/health")
 async def health_check():
     return {"status": "healthy", "service": "SmartDocQ API"} 

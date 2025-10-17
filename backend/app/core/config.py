@@ -96,8 +96,8 @@ class Settings(BaseSettings):
     api_v1_str: str = "/api"
     project_name: str = "SmartDocQ"
     
-    # Google Gemini API
-    GOOGLE_API_KEY: str = Field(default=..., env="GOOGLE_API_KEY")
+    # Google Gemini API (optional - used only as fallback if local embeddings fail)
+    GOOGLE_API_KEY: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
     
     # MongoDB Configuration
     MONGODB_URL: str = Field(default="mongodb://localhost:27017", env="MONGODB_URL")
@@ -131,7 +131,7 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Debug: Print what was loaded
-print(f"🔧 Config loaded - API Key starts with: {settings.GOOGLE_API_KEY[:20]}...")
+print(f"🔧 Config loaded - API Key: {'Set' if settings.GOOGLE_API_KEY else 'Not set (optional)'}")
 print(f"🔧 MongoDB URL: {settings.MONGODB_URL}")
 print(f"🔧 Secret Key starts with: {settings.SECRET_KEY[:10]}...")
 

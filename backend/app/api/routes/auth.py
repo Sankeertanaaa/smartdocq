@@ -113,6 +113,20 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         print(f"✅ Token decoded successfully, user_id: {user_id}")
         if user_id is None:
             raise credentials_exception
+    except jwt.ExpiredSignatureError as e:
+        print(f"❌ Token expired: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError as e:
+        print(f"❌ Invalid token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except jwt.PyJWTError as e:
         print(f"❌ JWT decode error: {e}")
         raise credentials_exception

@@ -3,7 +3,6 @@ from chromadb.config import Settings as ChromaSettings
 from typing import List, Dict, Any, Optional
 import os
 from app.core.config import settings
-import google.generativeai as genai
 
 # Prevent transformers from importing TensorFlow / Keras (avoids tf-keras errors)
 os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
@@ -98,8 +97,7 @@ class VectorStore:
                 else:
                     raise
         
-        # Initialize Gemini for embeddings
-        genai.configure(api_key=settings.GOOGLE_API_KEY)
+        # No longer initialize Gemini API key since we're using local embeddings
         self._st_model = None
     
     def _reset_collection(self):
@@ -269,56 +267,36 @@ class VectorStore:
             return []
     
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings using Gemini for better semantic matching"""
-        # Use Gemini embeddings for superior semantic understanding
+        """Generate embeddings using local SentenceTransformer for better reliability"""
+        # Use local sentence-transformers as primary method (384-dim, reliable)
         try:
-            embeddings: List[List[float]] = []
-            for text in texts:
-                truncated_text = text[:10000] if len(text) > 10000 else text
-                # Use Gemini embeddings (768-dim, better semantic understanding)
-                resp = genai.embed_content(model="models/text-embedding-004", content=truncated_text)
-                # google-generativeai returns { 'embedding': [..] } or nested under 'data' in older versions
-                vec = None
-                if isinstance(resp, dict) and 'embedding' in resp:
-                    vec = resp['embedding']
-                elif hasattr(resp, 'embedding'):
-                    vec = resp.embedding
-                else:
-                    # Unexpected shape
-                    raise RuntimeError("Unexpected embedding response shape")
-                embeddings.append(vec)
-            return embeddings
+            if self._st_model is None:
+                # Lazy import to avoid global TF/Keras import side effects
+                from sentence_transformers import SentenceTransformer
+                self._st_model = SentenceTransformer('all-MiniLM-L6-v2')
+            matrix = self._st_model.encode(texts, normalize_embeddings=True)
+            return [vec.tolist() for vec in matrix]
         except Exception as e:
-            print(f"Error generating embeddings via Gemini, falling back to SentenceTransformer: {str(e)}")
-            # Fallback to local sentence-transformers (384-dim)
+            print(f"Error with SentenceTransformer: {str(e)}")
+            # Final fallback: zeros matching current collection dimension
+            # Check collection dimension first
             try:
-                if self._st_model is None:
-                    # Lazy import to avoid global TF/Keras import side effects
-                    from sentence_transformers import SentenceTransformer
-                    self._st_model = SentenceTransformer('all-MiniLM-L6-v2')
-                matrix = self._st_model.encode(texts, normalize_embeddings=True)
-                return [vec.tolist() for vec in matrix]
-            except Exception as e2:
-                print(f"Error with SentenceTransformer fallback: {str(e2)}")
-                # Final fallback: zeros matching current collection dimension
-                # Check collection dimension first
+                # Try a test query to determine expected dimension
+                test_results = self.collection.query(
+                    query_embeddings=[[0.0] * 384],  # Try 384 first
+                    n_results=1
+                )
+                return [[0.0] * 384 for _ in texts]
+            except:
                 try:
-                    # Try a test query to determine expected dimension
                     test_results = self.collection.query(
-                        query_embeddings=[[0.0] * 384],  # Try 384 first
+                        query_embeddings=[[0.0] * 768],  # Try 768
                         n_results=1
                     )
-                    return [[0.0] * 384 for _ in texts]
+                    return [[0.0] * 768 for _ in texts]
                 except:
-                    try:
-                        test_results = self.collection.query(
-                            query_embeddings=[[0.0] * 768],  # Try 768
-                            n_results=1
-                        )
-                        return [[0.0] * 768 for _ in texts]
-                    except:
-                        # Default to 768 for new collections
-                        return [[0.0] * 768 for _ in texts]
+                    # Default to 384 for new collections
+                    return [[0.0] * 384 for _ in texts]
     
     def get_collection_stats(self) -> Dict[str, Any]:
         """Get statistics about the vector store"""
