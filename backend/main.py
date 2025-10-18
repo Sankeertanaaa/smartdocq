@@ -39,17 +39,18 @@ allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:60369",
-    "https://smartdocq.vercel.app",  # Original Vercel deployment
-    "https://smartdocq-indol.vercel.app",  # Your specific Vercel deployment
-    "https://smartdocq-evoan947s-sankeertanas-projects.vercel.app",  # Current Vercel deployment
-    "https://*.vercel.app",  # Any Vercel preview deployments
+    "https://smartdocq.vercel.app",
+    "https://smartdocq-indol.vercel.app",
+    "https://smartdocq-evoan947s-sankeertanas-projects.vercel.app",
 ]
 
 print(f"🔧 CORS: Allowing origins: {allowed_origins}")
+print(f"🔧 CORS: Also allowing all *.vercel.app domains via regex")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",  # Allow all Vercel deployments
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
