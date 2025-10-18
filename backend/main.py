@@ -45,7 +45,7 @@ allowed_origins = [
 ]
 
 print(f"🔧 CORS: Allowing origins: {allowed_origins}")
-print(f"🔧 CORS: Also allowing all *.vercel.app domains via regex")
+print(f"🔧 CORS: Also allowing all *.vercel.app domains via regex pattern")
 
 app.add_middleware(
     CORSMiddleware,
