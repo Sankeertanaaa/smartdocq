@@ -1,3 +1,4 @@
+# Updated dependencies - force rebuild
 setuptools>=69.0.0
 wheel>=0.42.0
 fastapi==0.104.1
