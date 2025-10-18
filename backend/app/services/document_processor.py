@@ -24,8 +24,20 @@ class DocumentProcessor:
             text = self._extract_text(file_path, filename)
             print(f"Extracted text length: {len(text) if text else 0} characters")
             
+            # Check if text is empty
+            if not text or len(text.strip()) == 0:
+                raise Exception("No text could be extracted from the document")
+            
             # Split text into chunks
             chunks = self._split_text(text)
+            print(f"Split into {len(chunks)} chunks")
+            
+            # Limit chunks to prevent memory issues (max ~500 chunks = ~500KB of text)
+            MAX_CHUNKS = 500
+            if len(chunks) > MAX_CHUNKS:
+                print(f"⚠️ Document has {len(chunks)} chunks, limiting to {MAX_CHUNKS}")
+                chunks = chunks[:MAX_CHUNKS]
+                print(f"⚠️ Warning: Document truncated to first {MAX_CHUNKS} chunks")
             
             # Generate document ID
             document_id = str(uuid.uuid4())
@@ -44,6 +56,8 @@ class DocumentProcessor:
                     chunk_metadata["user_id"] = user_id
                 processed_chunks.append(chunk_metadata)
             
+            print(f"✅ Document processed: {len(processed_chunks)} chunks ready")
+            
             return {
                 "document_id": document_id,
                 "filename": filename,
@@ -53,7 +67,7 @@ class DocumentProcessor:
             }
             
         except Exception as e:
-            print(f"Error processing document {filename}: {str(e)}")
+            print(f"❌ Error processing document {filename}: {str(e)}")
             import traceback
             traceback.print_exc()
             raise Exception(f"Error processing document: {str(e)}")

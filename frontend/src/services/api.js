@@ -10,11 +10,21 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Add auth token to requests
-    const token = localStorage.getItem('token');
-    console.log('API Request:', config.url, 'Token from localStorage:', token ? `${token.substring(0, 20)}...` : 'none');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Skip adding auth headers for static files (manifest.json, etc.)
+    const isStaticFile = config.url && (
+      config.url.includes('manifest.json') || 
+      config.url.includes('.ico') ||
+      config.url.includes('.png') ||
+      config.url.includes('.jpg')
+    );
+    
+    if (!isStaticFile) {
+      // Add auth token to API requests only
+      const token = localStorage.getItem('token');
+      console.log('API Request:', config.url, 'Token from localStorage:', token ? `${token.substring(0, 20)}...` : 'none');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     
     // Set Content-Type for JSON requests only (not for FormData)
@@ -33,6 +43,19 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Ignore errors for static files (manifest.json, etc.)
+    const isStaticFile = error?.config?.url && (
+      error.config.url.includes('manifest.json') || 
+      error.config.url.includes('.ico') ||
+      error.config.url.includes('.png') ||
+      error.config.url.includes('.jpg')
+    );
+    
+    if (isStaticFile) {
+      // Silently ignore static file errors
+      return Promise.reject(error);
+    }
+    
     // Allow callers to suppress console noise for expected errors (e.g., 401 during silent token verify)
     const shouldLog = !error?.config?.suppressLog && !(error?.response?.status === 401 && error?.config?.suppressLog);
     

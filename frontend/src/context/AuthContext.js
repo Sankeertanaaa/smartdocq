@@ -30,20 +30,38 @@ export const AuthProvider = ({ children }) => {
       const storedUser = (() => {
         try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
       })();
-      if (storedUser) {
-        setUser(storedUser);
-      }
+      
       if (storedToken) {
         try {
+          console.log('Verifying stored token...');
           const userData = await authService.verifyToken(storedToken);
+          console.log('Token verified successfully:', userData);
           setUser(userData);
           setToken(storedToken);
           localStorage.setItem('user', JSON.stringify(userData));
-        } catch (_error) {
-          // Dev-friendly: keep existing stored user/token even if verify fails (e.g., backend restarted)
-          setToken(storedToken);
+        } catch (error) {
+          console.warn('Token verification failed:', error?.response?.status);
+          // If token is invalid (401), clear it completely
+          if (error?.response?.status === 401) {
+            console.log('Clearing invalid token and user data');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setToken(null);
+            setUser(null);
+          } else if (storedUser) {
+            // For other errors (network issues), keep stored user temporarily
+            console.log('Network error - keeping stored user temporarily');
+            setUser(storedUser);
+            setToken(storedToken);
+          }
         }
+      } else if (storedUser) {
+        // If we have user but no token, clear the user too
+        console.log('User data without token - clearing');
+        localStorage.removeItem('user');
+        setUser(null);
       }
+      
       setLoading(false);
     };
 

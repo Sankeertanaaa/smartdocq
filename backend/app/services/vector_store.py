@@ -111,7 +111,7 @@ class VectorStore:
         )
 
     def add_documents(self, chunks: List[Dict[str, Any]]) -> bool:
-        """Add document chunks to vector store"""
+        """Add document chunks to vector store with batch processing"""
         print(f"Adding {len(chunks)} chunks to vector store")
         
         def _add():
@@ -134,20 +134,37 @@ class VectorStore:
                     metadata["user_id"] = chunk["user_id"]
                 metadatas.append(metadata)
             
-            print(f"Generating embeddings for {len(texts)} texts")
-            # Generate embeddings
-            embeddings = self._generate_embeddings(texts)
-            print(f"Generated {len(embeddings)} embeddings")
+            # Process in batches to avoid memory issues and timeouts
+            batch_size = 50  # Process 50 chunks at a time
+            total_batches = (len(texts) + batch_size - 1) // batch_size
             
-            # Add to ChromaDB
-            print("Adding to ChromaDB collection")
-            self.collection.add(
-                ids=ids,
-                embeddings=embeddings,
-                documents=texts,
-                metadatas=metadatas
-            )
-            print("Successfully added to ChromaDB")
+            print(f"Processing {len(texts)} texts in {total_batches} batches of {batch_size}")
+            
+            for batch_idx in range(0, len(texts), batch_size):
+                batch_num = (batch_idx // batch_size) + 1
+                batch_end = min(batch_idx + batch_size, len(texts))
+                
+                batch_ids = ids[batch_idx:batch_end]
+                batch_texts = texts[batch_idx:batch_end]
+                batch_metadatas = metadatas[batch_idx:batch_end]
+                
+                print(f"Batch {batch_num}/{total_batches}: Generating embeddings for {len(batch_texts)} texts")
+                
+                # Generate embeddings for this batch
+                batch_embeddings = self._generate_embeddings(batch_texts)
+                print(f"Batch {batch_num}/{total_batches}: Generated {len(batch_embeddings)} embeddings")
+                
+                # Add batch to ChromaDB
+                print(f"Batch {batch_num}/{total_batches}: Adding to ChromaDB collection")
+                self.collection.add(
+                    ids=batch_ids,
+                    embeddings=batch_embeddings,
+                    documents=batch_texts,
+                    metadatas=batch_metadatas
+                )
+                print(f"Batch {batch_num}/{total_batches}: Successfully added to ChromaDB")
+            
+            print(f"All {len(texts)} chunks successfully added to vector store")
             
         try:
             _add()
@@ -272,13 +289,28 @@ class VectorStore:
         try:
             if self._st_model is None:
                 # Lazy import to avoid global TF/Keras import side effects
+                print("🔧 Loading SentenceTransformer model (first time may take a moment)...")
                 from sentence_transformers import SentenceTransformer
                 self._st_model = SentenceTransformer('all-MiniLM-L6-v2')
-            matrix = self._st_model.encode(texts, normalize_embeddings=True)
+                print("✅ SentenceTransformer model loaded successfully")
+            
+            # Show progress for large batches
+            if len(texts) > 10:
+                print(f"🔄 Encoding {len(texts)} texts...")
+            
+            matrix = self._st_model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+            
+            if len(texts) > 10:
+                print(f"✅ Encoded {len(texts)} texts successfully")
+            
             return [vec.tolist() for vec in matrix]
         except Exception as e:
-            print(f"Error with SentenceTransformer: {str(e)}")
+            print(f"❌ Error with SentenceTransformer: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
             # Final fallback: zeros matching current collection dimension
+            print("⚠️ Falling back to zero embeddings (not recommended for production)")
             # Check collection dimension first
             try:
                 # Try a test query to determine expected dimension
@@ -286,6 +318,7 @@ class VectorStore:
                     query_embeddings=[[0.0] * 384],  # Try 384 first
                     n_results=1
                 )
+                print("Using 384-dimensional zero embeddings")
                 return [[0.0] * 384 for _ in texts]
             except:
                 try:
@@ -293,9 +326,11 @@ class VectorStore:
                         query_embeddings=[[0.0] * 768],  # Try 768
                         n_results=1
                     )
+                    print("Using 768-dimensional zero embeddings")
                     return [[0.0] * 768 for _ in texts]
                 except:
                     # Default to 384 for new collections
+                    print("Using default 384-dimensional zero embeddings")
                     return [[0.0] * 384 for _ in texts]
     
     def get_collection_stats(self) -> Dict[str, Any]:

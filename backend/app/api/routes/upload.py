@@ -142,13 +142,47 @@ async def upload_document(
             print(f"Document processing failed: {str(e)}")
             raise HTTPException(status_code=422, detail=f"Document processing failed: {str(e)}")
         
-        # Add to vector store
+        # Add to vector store with better error handling
+        success = False
         try:
+            print(f"Adding {len(result['chunks'])} chunks to vector store...")
             success = get_vector_store().add_documents(result["chunks"])
             print(f"Vector store operation completed: {success}")
+            
+            if not success:
+                raise Exception("Vector store returned False - indexing failed")
+                
         except Exception as e:
-            print(f"Vector store operation failed: {str(e)}")
-            raise HTTPException(status_code=422, detail=f"Vector store operation failed: {str(e)}")
+            error_msg = str(e)
+            print(f"❌ Vector store operation failed: {error_msg}")
+            import traceback
+            traceback.print_exc()
+            
+            # Clean up temporary file before raising error
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            
+            # Provide helpful error message
+            if "memory" in error_msg.lower():
+                raise HTTPException(
+                    status_code=422, 
+                    detail="Document too large - server ran out of memory. Try uploading a smaller file."
+                )
+            elif "timeout" in error_msg.lower():
+                raise HTTPException(
+                    status_code=422, 
+                    detail="Document processing timed out. Try uploading a smaller file or try again later."
+                )
+            elif "model" in error_msg.lower() or "sentence" in error_msg.lower():
+                raise HTTPException(
+                    status_code=500, 
+                    detail="Embedding model failed to load. Please contact administrator."
+                )
+            else:
+                raise HTTPException(
+                    status_code=422, 
+                    detail=f"Failed to index document: {error_msg}"
+                )
         
         # Save document metadata to MongoDB
         try:
@@ -167,17 +201,15 @@ async def upload_document(
                 "chunk_count": len(result["chunks"])
             }
             await documents_collection.insert_one(document_record)
-            print(f"Document record saved to MongoDB: {result['document_id']}")
+            print(f"✅ Document record saved to MongoDB: {result['document_id']}")
         except Exception as e:
-            print(f"Warning: Failed to save document to MongoDB: {str(e)}")
+            print(f"⚠️ Warning: Failed to save document to MongoDB: {str(e)}")
             # Don't fail the upload if MongoDB save fails
         
         # Clean up temporary file
         if os.path.exists(file_path):
             os.remove(file_path)
-        
-        if not success:
-            raise Exception("Failed to index document in vector store")
+            print(f"🗑️ Cleaned up temporary file: {file_path}")
         
         return UploadResponse(
             document_id=result["document_id"],

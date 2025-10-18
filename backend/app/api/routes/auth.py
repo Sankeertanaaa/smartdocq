@@ -106,8 +106,16 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     )
     
     try:
-        print(f"🔐 Verifying token with SECRET_KEY: {SECRET_KEY[:10]}...")
+        print(f"🔐 Verifying token with SECRET_KEY: {SECRET_KEY[:10]}... (len: {len(SECRET_KEY)})")
         print(f"🔐 Token starts with: {credentials.credentials[:30]}...")
+        
+        # Try to decode without verification first to see the payload
+        try:
+            unverified = jwt.decode(credentials.credentials, options={"verify_signature": False})
+            print(f"🔍 Unverified token payload: {unverified}")
+        except Exception as e:
+            print(f"⚠️ Could not decode token without verification: {e}")
+        
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         print(f"✅ Token decoded successfully, user_id: {user_id}")
@@ -121,7 +129,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             headers={"WWW-Authenticate": "Bearer"},
         )
     except jwt.InvalidTokenError as e:
-        print(f"❌ Invalid token: {e}")
+        print(f"❌ Invalid token (wrong SECRET_KEY?): {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token. Please log in again.",
