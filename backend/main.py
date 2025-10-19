@@ -15,7 +15,7 @@ import time
 app = FastAPI(
     title="SmartDocQ API",
     description="AI-powered document question answering system",
-    version="1.0.0"
+    version="1.0.1"  # Updated to force rebuild
 )
 
 # Add request logging middleware
@@ -42,6 +42,7 @@ allowed_origins = [
     "https://smartdocq.vercel.app",
     "https://smartdocq-indol.vercel.app",
     "https://smartdocq-evoan947s-sankeertanas-projects.vercel.app",
+    "https://smartdocq-ivd03drlu-sankeertanas-projects.vercel.app",  # Current preview deployment
 ]
 
 print(f"🔧 CORS: Allowing origins: {allowed_origins}")
