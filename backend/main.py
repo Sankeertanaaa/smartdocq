@@ -48,6 +48,7 @@ allowed_origins = [
 print(f"🔧 CORS: Allowing origins: {allowed_origins}")
 print(f"🔧 CORS: Also allowing all *.vercel.app domains via regex pattern")
 
+# Add CORS middleware with both explicit origins and regex pattern
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -56,9 +57,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
     expose_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
-print("✅ CORS middleware configured")
+print("✅ CORS middleware configured with regex pattern for *.vercel.app")
+print(f"✅ CORS will allow any domain matching: https://.*\\.vercel\\.app")
 
 # Include API routes
 # Startup and shutdown events
