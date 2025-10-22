@@ -97,15 +97,9 @@ class VectorStore:
                 else:
                     raise
         
-        # Pre-load SentenceTransformer model at startup to avoid timeout on first upload
-        print("🔧 Pre-loading SentenceTransformer model at startup...")
-        try:
-            from sentence_transformers import SentenceTransformer
-            self._st_model = SentenceTransformer('all-MiniLM-L6-v2')
-            print("✅ SentenceTransformer model pre-loaded successfully")
-        except Exception as e:
-            print(f"⚠️ Could not pre-load model: {str(e)}")
-            self._st_model = None
+        # Don't pre-load model to save memory - load on first use
+        self._st_model = None
+        print("💡 SentenceTransformer model will be loaded on first upload")
     
     def _reset_collection(self):
         try:
