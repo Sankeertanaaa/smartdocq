@@ -46,6 +46,14 @@ async def chat_with_document(request: ChatRequest, current_user: dict = Depends(
             n_results=10,  # Increased from 5 to 10 for more comprehensive context
             document_id=request.document_id
         )
+
+        # If no results found with specific document, search all documents
+        if not similar_chunks:
+            print(f"🔍 No results found for document_id {request.document_id}, searching all documents...")
+            similar_chunks = get_vector_store().search_similar(
+                query=request.question,
+                n_results=10  # Search all documents
+            )
         
         if not similar_chunks:
             answer = "I couldn't find any relevant information in the uploaded documents to answer your question. Please make sure you have uploaded a document and try asking a different question."
@@ -201,6 +209,14 @@ async def generate_follow_up_questions(request: ChatRequest, current_user: dict 
             n_results=3,
             document_id=request.document_id
         )
+
+        # If no results found with specific document, search all documents
+        if not similar_chunks:
+            print(f"🔍 No results found for document_id {request.document_id}, searching all documents...")
+            similar_chunks = get_vector_store().search_similar(
+                query=request.question,
+                n_results=3  # Search all documents
+            )
         
         if not similar_chunks:
             return {"follow_up_questions": []}
