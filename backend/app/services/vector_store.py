@@ -97,8 +97,15 @@ class VectorStore:
                 else:
                     raise
         
-        # No longer initialize Gemini API key since we're using local embeddings
-        self._st_model = None
+        # Pre-load SentenceTransformer model at startup to avoid timeout on first upload
+        print("🔧 Pre-loading SentenceTransformer model at startup...")
+        try:
+            from sentence_transformers import SentenceTransformer
+            self._st_model = SentenceTransformer('all-MiniLM-L6-v2')
+            print("✅ SentenceTransformer model pre-loaded successfully")
+        except Exception as e:
+            print(f"⚠️ Could not pre-load model: {str(e)}")
+            self._st_model = None
     
     def _reset_collection(self):
         try:
@@ -288,8 +295,8 @@ class VectorStore:
         # Use local sentence-transformers as primary method (384-dim, reliable)
         try:
             if self._st_model is None:
-                # Lazy import to avoid global TF/Keras import side effects
-                print("🔧 Loading SentenceTransformer model (first time may take a moment)...")
+                # Fallback if pre-loading failed
+                print("🔧 Loading SentenceTransformer model (fallback)...")
                 from sentence_transformers import SentenceTransformer
                 self._st_model = SentenceTransformer('all-MiniLM-L6-v2')
                 print("✅ SentenceTransformer model loaded successfully")
