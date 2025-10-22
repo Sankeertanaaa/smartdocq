@@ -30,6 +30,14 @@ class VectorStore:
                 cursor.execute("SELECT * FROM collections LIMIT 1")
                 conn.close()
                 print("✅ ChromaDB database appears valid")
+                # Force reset to ensure TF-IDF dimensions
+                print("🔄 Resetting ChromaDB for TF-IDF compatibility...")
+                if os.path.exists(settings.CHROMA_PERSIST_DIRECTORY):
+                    shutil.rmtree(settings.CHROMA_PERSIST_DIRECTORY)
+                    print(f"✅ Deleted old ChromaDB directory")
+                time.sleep(0.5)
+                os.makedirs(settings.CHROMA_PERSIST_DIRECTORY, exist_ok=True)
+                print("✅ Created fresh ChromaDB directory for TF-IDF")
             except sqlite3.OperationalError as db_error:
                 if "no such column" in str(db_error).lower() or "topic" in str(db_error).lower():
                     print(f"⚠️  Detected corrupted ChromaDB database: {str(db_error)}")
@@ -290,23 +298,36 @@ class VectorStore:
             print(f"🔧 Generating TF-IDF embeddings for {len(texts)} texts...")
             from sklearn.feature_extraction.text import TfidfVectorizer
             import numpy as np
-            
+
             # Create TF-IDF vectorizer (384 dimensions)
             vectorizer = TfidfVectorizer(max_features=384, stop_words='english')
-            
+
             # Generate embeddings
             tfidf_matrix = vectorizer.fit_transform(texts)
             embeddings = tfidf_matrix.toarray()
-            
+
             # Normalize
             norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
             norms[norms == 0] = 1
             embeddings = embeddings / norms
-            
-            print(f"✅ Generated {len(embeddings)} TF-IDF embeddings")
-            return embeddings.tolist()
+
+            # Ensure we always return proper list of lists format
+            result = embeddings.tolist()
+
+            # Validate the result format
+            if not isinstance(result, list):
+                print(f"❌ Invalid embedding format: {type(result)}")
+                result = [[0.0] * 384 for _ in texts]
+            elif len(result) > 0 and not isinstance(result[0], list):
+                print(f"❌ Invalid embedding structure: {type(result[0])}")
+                result = [[0.0] * 384 for _ in texts]
+
+            print(f"✅ Generated {len(result)} TF-IDF embeddings with shape: {len(result[0]) if result else 0}")
+            return result
         except Exception as e:
             print(f"❌ TF-IDF embedding failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
             # Fallback to zero embeddings
             print("⚠️ Using zero embeddings as fallback")
             return [[0.0] * 384 for _ in texts]
