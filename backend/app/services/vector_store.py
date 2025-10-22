@@ -61,8 +61,9 @@ class VectorStore:
         for attempt in range(max_retries):
             try:
                 print(f"🔧 Initializing ChromaDB (attempt {attempt + 1}/{max_retries})...")
-                self.client = chromadb.PersistentClient(
-                    path=settings.CHROMA_PERSIST_DIRECTORY,
+                # Use in-memory ChromaDB for Railway compatibility (no persistent writes needed)
+                print(f"🔧 Initializing ChromaDB in-memory mode for Railway...")
+                self.client = chromadb.EphemeralClient(
                     settings=ChromaSettings(
                         anonymized_telemetry=False
                     )

@@ -19,15 +19,15 @@ const UploadPage = () => {
   const maxSize = useMemo(() => 20 * 1024 * 1024, []); // 20MB
 
   const validateFile = useCallback((file) => {
-    const extension = '.' + file.name.split('.').pop().toLowerCase();
-    if (!allowedTypes.includes(extension)) {
-      throw new Error(`Unsupported file type. Please upload: ${allowedTypes.join(', ')}`);
-    }
+    // Only check file size, let backend handle file type validation
     if (file.size > maxSize) {
       throw new Error('File size exceeds 20MB limit');
     }
+    if (file.size === 0) {
+      throw new Error('File appears to be empty');
+    }
     return true;
-  }, [allowedTypes, maxSize]);
+  }, [maxSize]);
 
   const handleUpload = useCallback(async (file) => {
     try {
@@ -76,7 +76,7 @@ const UploadPage = () => {
       } else if (err?.response?.status === 413) {
         msg = 'File too large. Please upload a smaller file.';
       } else if (err?.response?.status === 422) {
-        msg = 'Invalid file format. Please upload a PDF, DOCX, or TXT file.';
+        msg = err?.response?.data?.detail || 'Document processing failed. Please try a different file or contact support.';
       }
       
       setError(msg);
@@ -193,7 +193,6 @@ const UploadPage = () => {
                       
                       <input
                         type="file"
-                        accept=".pdf,.docx,.txt"
                         onChange={handleFileSelect}
                         className="d-none"
                         id="file-upload"
