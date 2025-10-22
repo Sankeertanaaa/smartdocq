@@ -41,7 +41,7 @@ async def chat_with_document(request: ChatRequest, current_user: dict = Depends(
         user_id = str(current_user["_id"])
         
         # Search for relevant chunks - increased for better context
-        similar_chunks = vector_store.search_similar(
+        similar_chunks = get_vector_store().search_similar(
             query=request.question,
             n_results=10,  # Increased from 5 to 10 for more comprehensive context
             document_id=request.document_id
@@ -196,7 +196,7 @@ async def generate_follow_up_questions(request: ChatRequest, current_user: dict 
     """
     try:
         # Search for relevant chunks
-        similar_chunks = vector_store.search_similar(
+        similar_chunks = get_vector_store().search_similar(
             query=request.question,
             n_results=3,
             document_id=request.document_id
