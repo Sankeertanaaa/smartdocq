@@ -97,9 +97,8 @@ class VectorStore:
                 else:
                     raise
         
-        # Don't pre-load model to save memory - load on first use
+        # Removed SentenceTransformer initialization since we're using TF-IDF
         self._st_model = None
-        print("💡 SentenceTransformer model will be loaded on first upload")
     
     def _reset_collection(self):
         try:
@@ -285,54 +284,32 @@ class VectorStore:
             return []
     
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings using local SentenceTransformer for better reliability"""
-        # Use local sentence-transformers as primary method (384-dim, reliable)
+        """Generate embeddings using TF-IDF for free tier compatibility"""
+        # TF-IDF is lightweight and works on free tier (512MB RAM)
         try:
-            if self._st_model is None:
-                # Use paraphrase-MiniLM-L3-v2 - smaller and faster for free tier
-                print("🔧 Loading SentenceTransformer model (paraphrase-MiniLM-L3-v2)...")
-                from sentence_transformers import SentenceTransformer
-                self._st_model = SentenceTransformer('paraphrase-MiniLM-L3-v2')
-                print("✅ SentenceTransformer model loaded successfully")
+            print(f"🔧 Generating TF-IDF embeddings for {len(texts)} texts...")
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            import numpy as np
             
-            # Show progress for large batches
-            if len(texts) > 10:
-                print(f"🔄 Encoding {len(texts)} texts...")
+            # Create TF-IDF vectorizer (384 dimensions)
+            vectorizer = TfidfVectorizer(max_features=384, stop_words='english')
             
-            matrix = self._st_model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+            # Generate embeddings
+            tfidf_matrix = vectorizer.fit_transform(texts)
+            embeddings = tfidf_matrix.toarray()
             
-            if len(texts) > 10:
-                print(f"✅ Encoded {len(texts)} texts successfully")
+            # Normalize
+            norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+            norms[norms == 0] = 1
+            embeddings = embeddings / norms
             
-            return [vec.tolist() for vec in matrix]
+            print(f"✅ Generated {len(embeddings)} TF-IDF embeddings")
+            return embeddings.tolist()
         except Exception as e:
-            print(f"❌ Error with SentenceTransformer: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            
-            # Final fallback: zeros matching current collection dimension
-            print("⚠️ Falling back to zero embeddings (not recommended for production)")
-            # Check collection dimension first
-            try:
-                # Try a test query to determine expected dimension
-                test_results = self.collection.query(
-                    query_embeddings=[[0.0] * 384],  # Try 384 first
-                    n_results=1
-                )
-                print("Using 384-dimensional zero embeddings")
-                return [[0.0] * 384 for _ in texts]
-            except:
-                try:
-                    test_results = self.collection.query(
-                        query_embeddings=[[0.0] * 768],  # Try 768
-                        n_results=1
-                    )
-                    print("Using 768-dimensional zero embeddings")
-                    return [[0.0] * 768 for _ in texts]
-                except:
-                    # Default to 384 for new collections
-                    print("Using default 384-dimensional zero embeddings")
-                    return [[0.0] * 384 for _ in texts]
+            print(f"❌ TF-IDF embedding failed: {str(e)}")
+            # Fallback to zero embeddings
+            print("⚠️ Using zero embeddings as fallback")
+            return [[0.0] * 384 for _ in texts]
     
     def get_collection_stats(self) -> Dict[str, Any]:
         """Get statistics about the vector store"""

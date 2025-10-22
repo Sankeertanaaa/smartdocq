@@ -40,18 +40,9 @@ const UploadPage = () => {
 
       setUploading(true);
       setError(null);
-      setUploadStatus({ type: 'uploading', message: 'Preparing server (loading AI model)...' });
+      setUploadStatus({ type: 'uploading', message: 'Uploading document...' });
 
       validateFile(file);
-
-      // Warmup the model first
-      try {
-        await uploadService.warmupModel();
-        setUploadStatus({ type: 'uploading', message: 'Uploading document...' });
-      } catch (warmupError) {
-        console.warn('Warmup failed, continuing anyway:', warmupError);
-        setUploadStatus({ type: 'uploading', message: 'Uploading document...' });
-      }
 
       const response = await uploadService.uploadDocument(file);
       

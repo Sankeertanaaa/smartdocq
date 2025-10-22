@@ -43,18 +43,6 @@ async def get_current_user_optional(credentials: Optional[HTTPAuthorizationCrede
         print(f"Authentication failed: {e.detail}")
         return None
 
-@router.get("/warmup")
-async def warmup_model():
-    """Warmup endpoint to pre-load the model"""
-    try:
-        print("🔥 Warmup endpoint called - initializing vector store...")
-        vector_store = get_vector_store()
-        print("✅ Vector store initialized")
-        return {"status": "ready", "message": "Model loaded successfully"}
-    except Exception as e:
-        print(f"❌ Warmup failed: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
 @router.post("/upload", response_model=UploadResponse)
 async def upload_document(
     file: UploadFile = File(...),
