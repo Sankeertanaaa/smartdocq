@@ -211,9 +211,10 @@ class VectorStore:
                 where=where_clause,
                 include=["documents", "metadatas", "distances"]
             )
-            
+
             # Format results
             formatted_results = []
+            print(f"🔍 Search results: documents={len(results.get('documents', [[]])[0]) if results.get('documents') else 0}, distances={results.get('distances', [[]])[0] if results.get('distances') else []}")
             if results["documents"] and results["documents"][0]:
                 for i, doc in enumerate(results["documents"][0]):
                     formatted_results.append({
@@ -221,7 +222,17 @@ class VectorStore:
                         "metadata": results["metadatas"][0][i],
                         "distance": results["distances"][0][i]
                     })
-            
+
+            # Always return at least one result if available, even with low similarity
+            if not formatted_results and results["documents"] and results["documents"][0]:
+                print("⚠️ No high-similarity results, but found documents - returning best match")
+                formatted_results.append({
+                    "text": results["documents"][0][0],
+                    "metadata": results["metadatas"][0][0],
+                    "distance": results["distances"][0][0]
+                })
+
+            print(f"🔍 Formatted {len(formatted_results)} results from search")
             return formatted_results
             
         except Exception as e:
@@ -238,15 +249,16 @@ class VectorStore:
                     where_clause = None
                     if document_id:
                         where_clause = {"document_id": document_id}
-                    
+
                     results = self.collection.query(
                         query_embeddings=[query_embedding],
                         n_results=n_results,
                         where=where_clause,
                         include=["documents", "metadatas", "distances"]
                     )
-                    
+
                     formatted_results = []
+                    print(f"🔍 Retry search results: documents={len(results.get('documents', [[]])[0]) if results.get('documents') else 0}")
                     if results["documents"] and results["documents"][0]:
                         for i, doc in enumerate(results["documents"][0]):
                             formatted_results.append({
@@ -254,12 +266,22 @@ class VectorStore:
                                 "metadata": results["metadatas"][0][i],
                                 "distance": results["distances"][0][i]
                             })
-                    
+
+                    # Always return at least one result if available
+                    if not formatted_results and results["documents"] and results["documents"][0]:
+                        print("⚠️ No high-similarity results in retry, but found documents - returning best match")
+                        formatted_results.append({
+                            "text": results["documents"][0][0],
+                            "metadata": results["metadatas"][0][0],
+                            "distance": results["distances"][0][0]
+                        })
+
+                    print(f"🔍 Formatted {len(formatted_results)} results from retry search")
                     return formatted_results
                 except Exception as e2:
                     print(f"Retry after reset failed: {str(e2)}")
             return []
-    
+
     def delete_document(self, document_id: str) -> bool:
         """Delete all chunks for a specific document"""
         try:
@@ -270,27 +292,6 @@ class VectorStore:
         except Exception as e:
             print(f"Error deleting document from vector store: {str(e)}")
             return False
-    
-    def get_document_chunks(self, document_id: str) -> List[Dict[str, Any]]:
-        """Get all chunks for a specific document"""
-        try:
-            results = self.collection.get(
-                where={"document_id": document_id},
-                include=["documents", "metadatas"]
-            )
-            
-            chunks = []
-            for i, doc in enumerate(results["documents"]):
-                chunks.append({
-                    "text": doc,
-                    "metadata": results["metadatas"][i]
-                })
-            
-            return chunks
-            
-        except Exception as e:
-            print(f"Error getting document chunks: {str(e)}")
-            return []
     
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings using TF-IDF for free tier compatibility"""
