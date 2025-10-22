@@ -15,7 +15,7 @@ import time
 app = FastAPI(
     title="SmartDocQ API",
     description="AI-powered document question answering system",
-    version="1.0.1"  # Updated to force rebuild
+    version="1.0.3"  # Force rebuild - Oct 22 2025
 )
 
 # Add request logging middleware
