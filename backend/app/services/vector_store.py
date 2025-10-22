@@ -289,10 +289,10 @@ class VectorStore:
         # Use local sentence-transformers as primary method (384-dim, reliable)
         try:
             if self._st_model is None:
-                # Fallback if pre-loading failed
-                print("🔧 Loading SentenceTransformer model (fallback)...")
+                # Use paraphrase-MiniLM-L3-v2 - smaller and faster for free tier
+                print("🔧 Loading SentenceTransformer model (paraphrase-MiniLM-L3-v2)...")
                 from sentence_transformers import SentenceTransformer
-                self._st_model = SentenceTransformer('all-MiniLM-L6-v2')
+                self._st_model = SentenceTransformer('paraphrase-MiniLM-L3-v2')
                 print("✅ SentenceTransformer model loaded successfully")
             
             # Show progress for large batches
