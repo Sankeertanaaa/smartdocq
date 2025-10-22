@@ -90,6 +90,11 @@ api.interceptors.response.use(
 );
 
 export const uploadService = {
+  warmupModel: async () => {
+    const response = await api.get('/api/warmup');
+    return response.data;
+  },
+
   uploadDocument: async (file) => {
     const formData = new FormData();
     formData.append('file', file);
