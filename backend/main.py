@@ -1,9 +1,6 @@
 import os
 
-# Disable TensorFlow/Keras in transformers to avoid tf-keras dependency
-os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
-os.environ.setdefault("TRANSFORMERS_NO_FLAX", "1")
-os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
+# TF-IDF doesn't need transformer environment variables
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +40,7 @@ allowed_origins = [
     "https://smartdocq-indol.vercel.app",
     "https://smartdocq-evoan947s-sankeertanas-projects.vercel.app",
     "https://smartdocq-ivd03drlu-sankeertanas-projects.vercel.app",  # Current preview deployment
+    "https://smartdoc-backend-production-6905.up.railway.app",  # Railway backend
 ]
 
 print(f"🔧 CORS: Allowing origins: {allowed_origins}")
