@@ -162,6 +162,14 @@ async def upload_document(
         try:
             documents_collection = get_documents_collection()
 
+            # Check if MongoDB is available
+            if documents_collection is None:
+                print(f"❌ MongoDB not available - documents_collection is None")
+                raise HTTPException(
+                    status_code=503,
+                    detail="Document storage unavailable (database not connected)"
+                )
+
             document_record = {
                 "document_id": result["document_id"],
                 "filename": result["filename"],
@@ -172,11 +180,38 @@ async def upload_document(
                 "status": "processed",
                 "chunk_count": len(result["chunks"])
             }
-            await documents_collection.insert_one(document_record)
-            print(f"✅ Document record saved to MongoDB: {result['document_id']}")
+
+            print(f"📄 Saving document record to MongoDB...")
+            print(f"   Document ID: {result['document_id']}")
+            print(f"   User ID: {user_id}")
+            print(f"   Filename: {file.filename}")
+            print(f"   File size: {result['file_size']}")
+            print(f"   Chunk count: {len(result['chunks'])}")
+
+            # Insert document record
+            insert_result = await documents_collection.insert_one(document_record)
+
+            if insert_result.inserted_id:
+                print(f"✅ Document record saved to MongoDB: {result['document_id']}")
+                print(f"   Inserted ID: {insert_result.inserted_id}")
+            else:
+                print(f"❌ Failed to save document record to MongoDB: {result['document_id']}")
+                raise Exception("Document insert failed - no inserted_id returned")
+
+        except HTTPException:
+            # Re-raise HTTP exceptions
+            raise
         except Exception as e:
-            print(f"⚠️ Warning: Failed to save document to MongoDB: {str(e)}")
-            # Don't fail the upload if MongoDB save fails
+            error_msg = str(e)
+            print(f"⚠️ Warning: Failed to save document to MongoDB: {error_msg}")
+            import traceback
+            traceback.print_exc()
+
+            # For now, don't fail the upload if MongoDB save fails
+            # But log this as a critical issue that needs investigation
+            print("🚨 CRITICAL: Document upload succeeded but MongoDB save failed!")
+            print("🚨 This means documents won't appear in the document library!")
+            print(f"🚨 Document ID: {result['document_id']}, User ID: {user_id}")
 
         # Clean up temporary file
         if os.path.exists(file_path):
@@ -281,9 +316,25 @@ async def list_documents(current_user: dict = Depends(get_current_user)):
 
         # Get document metadata from MongoDB for this user
         documents_collection = get_documents_collection()
+
+        # Check if MongoDB is available
+        if documents_collection is None:
+            print(f"❌ MongoDB not available - documents_collection is None")
+            raise HTTPException(
+                status_code=503,
+                detail="Document retrieval unavailable (database not connected)"
+            )
+
+        print(f"   📄 Querying MongoDB for user documents...")
         user_doc_records = await documents_collection.find({"user_id": user_id}).to_list(length=None)
 
         print(f"   📄 Found {len(user_doc_records)} document records in MongoDB for user")
+        for doc in user_doc_records:
+            print(f"      - Doc ID: {doc['document_id']}, Filename: {doc.get('filename')}, User ID: {doc.get('user_id')}")
+
+        if len(user_doc_records) == 0:
+            print(f"   ⚠️ No documents found in MongoDB for user {user_id}")
+            print(f"   This could mean: 1) No documents uploaded, 2) MongoDB save failed during upload, 3) User ID mismatch")
 
         # Convert to the format expected by frontend
         user_docs = []
