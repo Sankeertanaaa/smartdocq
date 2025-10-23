@@ -96,7 +96,7 @@ class AIService:
                 "question_id": question_id,
                 "session_id": session_id or str(uuid.uuid4()),
                 "sources": sources,
-                "timestamp": datetime.now(),
+                "timestamp": datetime.utcnow(),
                 "model_used": "gemini-2.5-flash"
             }
             
@@ -107,7 +107,7 @@ class AIService:
                 "question_id": str(uuid.uuid4()),
                 "session_id": session_id or str(uuid.uuid4()),
                 "sources": [],
-                "timestamp": datetime.now(),
+                "timestamp": datetime.utcnow(),
                 "model_used": "gemini-2.5-flash",
                 "error": str(e)
             }

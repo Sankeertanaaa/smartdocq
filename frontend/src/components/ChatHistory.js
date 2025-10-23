@@ -77,7 +77,7 @@ const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
             id: `user-${item.timestamp}`,
             type: 'user',
             content: item.question,
-            timestamp: new Date(item.timestamp)
+            timestamp: item.timestamp
           });
           messageMap.set(`user-${item.timestamp}`, true);
         }
@@ -88,14 +88,14 @@ const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
             type: 'ai',
             content: item.answer,
             sources: item.sources || [],
-            timestamp: new Date(item.timestamp)
+            timestamp: item.timestamp
           });
           messageMap.set(`ai-${item.timestamp}`, true);
         }
       });
       
-      // Sort messages by timestamp
-      messages.sort((a, b) => a.timestamp - b.timestamp);
+      // Sort messages by timestamp (ensure UTC interpretation)
+      messages.sort((a, b) => new Date(a.timestamp + (a.timestamp.includes('Z') ? '' : 'Z')) - new Date(b.timestamp + (b.timestamp.includes('Z') ? '' : 'Z')));
       
       // Notify parent component
       onSessionSelect(session, messages);
@@ -217,15 +217,16 @@ const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
   });
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    // Backend stores timestamps in UTC, but we want to display in user's local time
+    const date = new Date(dateString + (dateString.includes('Z') ? '' : 'Z')); // Ensure UTC interpretation
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 1) return 'Today';
     if (diffDays === 2) return 'Yesterday';
     if (diffDays <= 7) return `${diffDays - 1} days ago`;
-    
+
     return date.toLocaleDateString();
   };
 

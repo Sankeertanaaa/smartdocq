@@ -108,7 +108,7 @@ const HistoryPage = () => {
       });
       
       // Sort messages by timestamp
-      messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      messages.sort((a, b) => new Date(a.timestamp + (a.timestamp.includes('Z') ? '' : 'Z')) - new Date(b.timestamp + (b.timestamp.includes('Z') ? '' : 'Z')));
       
       setSessionHistory(messages);
       setSelectedSession(sessionId);
@@ -139,7 +139,9 @@ const HistoryPage = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString([], {
+    // Backend stores timestamps in UTC, but we want to display in user's local time
+    const date = new Date(dateString + (dateString.includes('Z') ? '' : 'Z')); // Ensure UTC interpretation
+    return date.toLocaleDateString([], {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -149,10 +151,33 @@ const HistoryPage = () => {
   };
 
   const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString([], {
+    // Backend stores timestamps in UTC, but we want to display in user's local time
+    const date = new Date(dateString + (dateString.includes('Z') ? '' : 'Z')); // Ensure UTC interpretation
+    return date.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const getRelativeTime = (dateString) => {
+    const date = new Date(dateString + (dateString.includes('Z') ? '' : 'Z')); // Ensure UTC interpretation
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) {
+      return 'just now';
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else if (diffInSeconds < 604800) {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    } else {
+      return formatDate(dateString);
+    }
   };
 
   if (loading && sessions.length === 0) {
@@ -219,7 +244,7 @@ const HistoryPage = () => {
                         </div>
                         <div className="flex items-center space-x-2 mt-1 text-xs text-gray-500">
                           <Calendar className="h-3 w-3" />
-                          <span>{formatDate(session.last_activity)}</span>
+                          <span>{getRelativeTime(session.last_activity)}</span>
                         </div>
                         <div className="flex items-center space-x-2 mt-1 text-xs text-gray-500">
                           <Clock className="h-3 w-3" />
@@ -284,7 +309,7 @@ const HistoryPage = () => {
                             {message.type === 'user' ? 'You' : 'AI Assistant'}
                           </span>
                           <span className="text-xs text-gray-500">
-                            {formatTime(message.timestamp)}
+                            {getRelativeTime(message.timestamp)}
                           </span>
                         </div>
                         <div className="text-sm text-gray-700 leading-relaxed">

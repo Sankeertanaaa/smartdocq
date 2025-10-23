@@ -6,9 +6,11 @@ const ChatMessage = ({ message, onFeedback, onCopy }) => {
   const [showSources, setShowSources] = useState(false);
 
   const formatTime = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    // Backend stores timestamps in UTC, but we want to display in user's local time
+    const date = new Date(timestamp + (timestamp.includes('Z') ? '' : 'Z')); // Ensure UTC interpretation
+    return date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
