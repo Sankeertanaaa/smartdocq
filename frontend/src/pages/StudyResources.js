@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, Form, InputGroup, Modal } from 'react-bootstrap';
 import { Accordion } from 'react-bootstrap';
 import { formatRelativeTime } from '../utils/timestamp';
+import { useAuth } from '../context/AuthContext';
 import {
   BookOpen,
   Search,
@@ -20,8 +21,19 @@ import {
   Headphones,
   Upload,
   Send,
-  Mail
+  Mail,
+  MessageCircle,
+  HelpCircle
 } from 'lucide-react';
+
+const StudyResources = () => {
+  const { user } = useAuth();
+  const [showHelpSections, setShowHelpSections] = useState(false);
+  const [resources, setResources] = useState([]);
+  const [filteredResources, setFilteredResources] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [loading, setLoading] = useState(true);
   const [contactForm, setContactForm] = useState({
     subject: '',
     category: 'general',
