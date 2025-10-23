@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.api.routes import upload, chat, history, feedback, auth, demo
+from app.api.routes import upload, chat, history, feedback, auth, demo, study_guide
 from app.core.config import settings
 from app.services.database import connect_to_mongo, close_mongo_connection
 import time
@@ -109,6 +109,7 @@ app.include_router(upload.router, prefix="/api", tags=["upload"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(history.router, prefix="/api", tags=["history"])
 app.include_router(feedback.router, prefix="/api", tags=["feedback"])
+app.include_router(study_guide.router, prefix="/api", tags=["study_guide"])
 app.include_router(demo.router, prefix="/api/demo", tags=["demo"])
 
 @app.get("/")

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Badge, Form, InputGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Form, InputGroup, Modal } from 'react-bootstrap';
 import { formatRelativeTime } from '../utils/timestamp';
 import {
   BookOpen,
@@ -14,17 +14,11 @@ import {
   Star,
   Clock,
   Users,
-  Filter
+  Filter,
+  Help
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-
-const StudyResources = () => {
   const { user } = useAuth();
-  const [resources, setResources] = useState([]);
-  const [filteredResources, setFilteredResources] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [loading, setLoading] = useState(true);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Generate personalized study resources based on user's documents and activity
   const generatePersonalizedResources = useCallback(() => {
@@ -321,52 +315,191 @@ const StudyResources = () => {
     }
   };
 
-  const generatePersonalDocumentSummary = () => {
-    // Create a personalized document summary
-    const summaryContent = `
-      Personal Document Summary for ${user?.fullName || 'Student'}
-      
-      Generated on: ${new Date().toLocaleDateString()}
-      
-      This is your personalized document summary based on your uploaded materials.
-      
-      Documents Analyzed:
-      - Your uploaded documents will be summarized here
-      - Key concepts and topics will be extracted
-      - Important points will be highlighted
-      
-      Study Recommendations:
-      - Focus areas based on your document content
-      - Suggested additional resources
-      - Practice questions and exercises
-      
-      This feature will be enhanced to analyze your actual uploaded documents.
-    `;
-    
-    // Create and open a new window with the summary
-    const summaryWindow = window.open('', '_blank');
-    summaryWindow.document.write(`
-      <html>
-        <head>
-          <title>Personal Document Summary - ${user?.fullName}</title>
-          <style>
-            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
-            h1 { color: #2563eb; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
-            .summary { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .highlight { background: #fef3c7; padding: 2px 4px; border-radius: 4px; }
-          </style>
-        </head>
-        <body>
-          <h1>Personal Document Summary</h1>
-          <div class="summary">
-            <pre>${summaryContent}</pre>
-          </div>
-          <button onclick="window.print()" style="background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
-            Print Summary
-          </button>
-        </body>
-      </html>
-    `);
+  const generatePersonalDocumentSummary = async () => {
+    try {
+      // Show loading state
+      const summaryWindow = window.open('', '_blank');
+      summaryWindow.document.write(`
+        <html>
+          <head>
+            <title>Generating Document Summary - ${user?.fullName}</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                line-height: 1.6;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+              }
+              .spinner {
+                width: 40px;
+                height: 40px;
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #2563eb;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+              }
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="spinner"></div>
+            <h2 style="margin-top: 20px; color: #2563eb;">Generating Your Document Summary...</h2>
+            <p>Analyzing your uploaded documents and creating personalized insights.</p>
+          </body>
+        </html>
+      `);
+
+      // Fetch document summary from API
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/document-summary`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          const summaryData = result.data;
+
+          // Update the window with the real summary
+          summaryWindow.document.write(`
+            <html>
+              <head>
+                <title>Personal Document Summary - ${user?.fullName}</title>
+                <style>
+                  body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+                  h1 { color: #2563eb; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+                  .summary { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; }
+                  .highlight { background: #fef3c7; padding: 2px 4px; border-radius: 4px; }
+                  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
+                  .stat-card { background: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; text-align: center; }
+                  .stat-number { font-size: 24px; font-weight: bold; color: #2563eb; }
+                  .topics { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0; }
+                  .topic-tag { background: #e5e7eb; padding: 4px 8px; border-radius: 12px; font-size: 12px; }
+                </style>
+              </head>
+              <body>
+                <h1>Personal Document Summary</h1>
+                <div class="summary">
+                  <p><strong>Generated:</strong> ${new Date(result.generated_at).toLocaleDateString()}</p>
+                  <p><strong>Total Documents:</strong> ${summaryData.total_documents}</p>
+
+                  <h3>Summary</h3>
+                  <p>${summaryData.summary}</p>
+
+                  ${summaryData.key_topics && summaryData.key_topics.length > 0 ? `
+                    <h3>Key Topics</h3>
+                    <div class="topics">
+                      ${summaryData.key_topics.map(topic => `<span class="topic-tag">${topic}</span>`).join('')}
+                    </div>
+                  ` : ''}
+
+                  ${summaryData.content_analysis ? `
+                    <h3>Content Analysis</h3>
+                    <div class="stats">
+                      ${summaryData.content_analysis.main_themes ? `
+                        <div class="stat-card">
+                          <div class="stat-number">${summaryData.content_analysis.main_themes.length}</div>
+                          <div>Main Themes</div>
+                        </div>
+                      ` : ''}
+                      ${summaryData.content_analysis.complexity_level ? `
+                        <div class="stat-card">
+                          <div class="stat-number">${summaryData.content_analysis.complexity_level}</div>
+                          <div>Complexity Level</div>
+                        </div>
+                      ` : ''}
+                    </div>
+                    ${summaryData.content_analysis.gaps ? `
+                      <p><strong>Knowledge Gaps:</strong> ${summaryData.content_analysis.gaps.join(', ')}</p>
+                    ` : ''}
+                  ` : ''}
+
+                  ${summaryData.recommendations && summaryData.recommendations.length > 0 ? `
+                    <h3>Study Recommendations</h3>
+                    <ul>
+                      ${summaryData.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                  ` : ''}
+                </div>
+                <button onclick="window.print()" style="background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+                  Print Summary
+                </button>
+              </body>
+            </html>
+          `);
+        } else {
+          throw new Error(result.message || 'Failed to generate summary');
+        }
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (err) {
+      console.error('Error generating document summary:', err);
+
+      // Show fallback summary
+      const summaryContent = `
+        Personal Document Summary for ${user?.fullName || 'Student'}
+
+        Generated on: ${new Date().toLocaleDateString()}
+
+        We're currently processing your request. This feature analyzes your uploaded documents to provide:
+
+        - Key topics and themes from your materials
+        - Content analysis and insights
+        - Personalized study recommendations
+        - Progress tracking and gaps identification
+
+        Please ensure you have uploaded some documents to get the most accurate summary.
+
+        Features available:
+        ✅ Document analysis and summarization
+        ✅ Topic extraction and categorization
+        ✅ Personalized recommendations
+        ✅ Progress tracking
+
+        This summary will be enhanced as you upload more documents and engage with the platform.
+      `;
+
+      const summaryWindow = window.open('', '_blank');
+      summaryWindow.document.write(`
+        <html>
+          <head>
+            <title>Personal Document Summary - ${user?.fullName}</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+              h1 { color: #2563eb; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+              .summary { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; }
+              .highlight { background: #fef3c7; padding: 2px 4px; border-radius: 4px; }
+              .notice { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            </style>
+          </head>
+          <body>
+            <h1>Personal Document Summary</h1>
+            <div class="summary">
+              <div class="notice">
+                <strong>Note:</strong> Using fallback data. Connect to the backend for enhanced analysis.
+              </div>
+              <pre>${summaryContent}</pre>
+            </div>
+            <button onclick="window.print()" style="background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+              Print Summary
+            </button>
+          </body>
+        </html>
+      `);
+    }
   };
 
   const generatePersonalResourceDownload = (resource) => {
@@ -710,7 +843,7 @@ This summary will be enhanced to analyze your actual uploaded documents.
                     </p>
                   </Col>
                   <Col md={4} className="text-md-end">
-                    <Button variant="light" className="px-4">
+                    <Button variant="light" className="px-4" onClick={() => setShowHelpModal(true)}>
                       Get Help
                     </Button>
                   </Col>
@@ -720,6 +853,112 @@ This summary will be enhanced to analyze your actual uploaded documents.
           </Col>
         </Row>
       </Container>
+
+      {/* Help Modal */}
+      <Modal show={showHelpModal} onHide={() => setShowHelpModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Help & Support</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="text-center mb-4">
+            <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                 style={{width: '60px', height: '60px'}}>
+              <BookOpen size={30} className="text-white" />
+            </div>
+            <h5>How can we help you today?</h5>
+            <p className="text-muted">Choose from the options below to get the assistance you need.</p>
+          </div>
+
+          <Row className="g-3">
+            <Col md={6}>
+              <Card className="text-center hover-lift h-100">
+                <Card.Body className="p-3">
+                  <div className="bg-info rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                       style={{width: '40px', height: '40px'}}>
+                    <Search size={20} className="text-white" />
+                  </div>
+                  <h6 className="mb-2">Browse FAQ</h6>
+                  <p className="text-muted small mb-3">
+                    Find answers to common questions about using SmartDocQ features.
+                  </p>
+                  <Button variant="outline-info" size="sm" className="w-100">
+                    View FAQ
+                  </Button>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6}>
+              <Card className="text-center hover-lift h-100">
+                <Card.Body className="p-3">
+                  <div className="bg-success rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                       style={{width: '40px', height: '40px'}}>
+                    <Users size={20} className="text-white" />
+                  </div>
+                  <h6 className="mb-2">Contact Support</h6>
+                  <p className="text-muted small mb-3">
+                    Get in touch with our support team for personalized assistance.
+                  </p>
+                  <Button variant="outline-success" size="sm" className="w-100">
+                    Contact Us
+                  </Button>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6}>
+              <Card className="text-center hover-lift h-100">
+                <Card.Body className="p-3">
+                  <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                       style={{width: '40px', height: '40px'}}>
+                    <FileText size={20} className="text-white" />
+                  </div>
+                  <h6 className="mb-2">Documentation</h6>
+                  <p className="text-muted small mb-3">
+                    Read detailed guides and tutorials on using SmartDocQ effectively.
+                  </p>
+                  <Button variant="outline-warning" size="sm" className="w-100">
+                    Read Docs
+                  </Button>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6}>
+              <Card className="text-center hover-lift h-100">
+                <Card.Body className="p-3">
+                  <div className="bg-danger rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                       style={{width: '40px', height: '40px'}}>
+                    <Link2 size={20} className="text-white" />
+                  </div>
+                  <h6 className="mb-2">Community</h6>
+                  <p className="text-muted small mb-3">
+                    Connect with other users and share your learning experiences.
+                  </p>
+                  <Button variant="outline-danger" size="sm" className="w-100">
+                    Join Community
+                  </Button>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <div className="mt-4 p-3 bg-light rounded">
+            <h6 className="mb-2">Quick Tips</h6>
+            <ul className="small text-muted mb-0">
+              <li>Upload documents in PDF, DOCX, or TXT format for best results</li>
+              <li>Use specific questions when chatting with the AI for more accurate answers</li>
+              <li>Check the Study Resources section regularly for personalized recommendations</li>
+              <li>Review your chat history to track your learning progress</li>
+            </ul>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowHelpModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

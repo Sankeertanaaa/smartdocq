@@ -14,8 +14,7 @@ import AdminDocuments from './pages/AdminDocuments';
 import AdminAnalytics from './pages/AdminAnalytics';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentDocuments from './pages/StudentDocuments';
-import StudyResources from './pages/StudyResources';
-import GuestDashboard from './pages/GuestDashboard';
+import PersonalStudyGuide from './pages/PersonalStudyGuide';
 import GuestDemo from './pages/GuestDemo';
 import GuestResponses from './pages/GuestResponses';
 import GuestHistory from './pages/GuestHistory';
@@ -128,10 +127,17 @@ function App() {
                     <ProtectedRoute requiredRoles={["student", "admin"]}>
                       <StudyResources />
                     </ProtectedRoute>
-                  } 
+                  }/>
+                <Route
+                  path="/personal-study-guide"
+                  element={
+                    <ProtectedRoute requiredRoles={["student", "admin"]}>
+                      <PersonalStudyGuide />
+                    </ProtectedRoute>
+                  }
                 />
-                <Route 
-                  path="/admin/documents" 
+                <Route
+                  path="/admin/documents"  
                   element={
                     <ProtectedRoute requiredRoles="admin">
                       <AdminDocuments />

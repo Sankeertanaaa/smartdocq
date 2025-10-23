@@ -266,4 +266,296 @@ class AIService:
             return points[:10]  # Return max 10 key points
             
         except Exception as e:
-            return [f"Unable to extract key points due to an error: {str(e)}"] 
+            return [f"Unable to extract key points due to an error: {str(e)}"]
+        """Generate a personalized study guide based on user's learning data"""
+        try:
+            # Prepare comprehensive context
+            context = self._prepare_study_guide_context(user_data, documents, sessions, messages)
+
+            prompt = f"""
+            You are an expert educational consultant creating a personalized study guide for a student. Based on the following comprehensive data about their learning journey, create a detailed, actionable study guide.
+
+            STUDENT PROFILE:
+            - Name: {context['user_info']['name']}
+            - Role: {context['user_info']['role']}
+            - Total Documents: {context['total_documents']}
+            - Total Study Sessions: {context['total_sessions']}
+            - Total Messages/Interactions: {context['total_messages']}
+            - Study Streak: {context['study_streak']} days
+
+            RECENT DOCUMENTS:
+            {context['recent_documents']}
+
+            RECENT SESSIONS:
+            {context['recent_sessions']}
+
+            CHAT PATTERNS:
+            {context['chat_patterns']}
+
+            Please create a comprehensive personalized study guide with the following sections:
+
+            1. LEARNING PROGRESS OVERVIEW:
+            - Current strengths and areas for improvement
+            - Progress metrics and achievements
+            - Study consistency analysis
+
+            2. PERSONALIZED RECOMMENDATIONS:
+            - 3 specific skill areas to focus on (High/Medium priority)
+            - Progress indicators (0-100%)
+            - Detailed tips for improvement
+            - Specific actions to take
+
+            3. 3-WEEK STUDY PLAN:
+            - Week 1: Foundation building activities
+            - Week 2: Skill development activities
+            - Week 3: Application and review activities
+            - Specific topics and activities for each week
+
+            4. RECOMMENDED RESOURCES:
+            - 3 relevant external resources or tools
+            - How each resource helps their specific needs
+            - Access information
+
+            Format the response as a JSON object with this exact structure:
+            {{
+                "learning_progress": {{
+                    "total_documents": {context['total_documents']},
+                    "total_sessions": {context['total_sessions']},
+                    "average_score": number between 70-95,
+                    "study_streak": {context['study_streak']}
+                }},
+                "recommendations": [
+                    {{
+                        "title": "string",
+                        "description": "string",
+                        "priority": "High" or "Medium",
+                        "progress": number between 0-100,
+                        "tips": ["specific tip 1", "specific tip 2", "specific tip 3"]
+                    }}
+                ],
+                "study_plan": [
+                    {{
+                        "week": 1,
+                        "title": "string",
+                        "topics": ["topic 1", "topic 2"],
+                        "activities": ["activity 1", "activity 2", "activity 3"]
+                    }}
+                ],
+                "resources": [
+                    {{
+                        "title": "string",
+                        "description": "string",
+                        "type": "PDF" or "Interactive" or "Video",
+                        "url": "string"
+                    }}
+                ]
+            }}
+
+            Make recommendations highly specific to their actual usage patterns, document types, and learning behaviors.
+            """
+
+            response = self.model.generate_content(prompt)
+            response_text = self._extract_response_text(response)
+
+            # Try to parse JSON response
+            try:
+                json_start = response_text.find('{')
+                json_end = response_text.rfind('}') + 1
+
+                if json_start != -1 and json_end > json_start:
+                    json_content = response_text[json_start:json_end]
+                    study_guide = json.loads(json_content)
+                    return study_guide
+                else:
+                    return self._get_fallback_study_guide(context)
+
+            except json.JSONDecodeError:
+                return self._get_fallback_study_guide(context)
+
+        except Exception as e:
+            print(f"Error generating personalized study guide: {str(e)}")
+            return self._get_fallback_study_guide({
+                "user_info": {"name": "Student"},
+                "total_documents": 0,
+                "total_sessions": 0,
+                "total_messages": 0,
+                "study_streak": 0
+            })
+
+    def _prepare_study_guide_context(self, user_data, documents, sessions, messages):
+        """Prepare context for study guide generation"""
+        # Get recent documents (last 5)
+        recent_docs = documents[-5:] if len(documents) > 5 else documents
+
+        # Get recent sessions (last 5)
+        recent_sessions = sessions[-5:] if len(sessions) > 5 else sessions
+
+        # Analyze chat patterns
+        chat_topics = []
+        for msg in messages[-20:]:  # Last 20 messages
+            content = msg.get('content', '').lower()
+            if 'explain' in content or 'what is' in content:
+                chat_topics.append('explanation')
+            elif 'how' in content:
+                chat_topics.append('procedural')
+            elif 'why' in content:
+                chat_topics.append('causal')
+            elif any(word in content for word in ['analyze', 'analysis', 'break down']):
+                chat_topics.append('analysis')
+
+        # Count topic frequencies
+        topic_counts = {}
+        for topic in chat_topics:
+            topic_counts[topic] = topic_counts.get(topic, 0) + 1
+
+        return {
+            "user_info": {
+                "name": user_data.get("fullName", "Student"),
+                "email": user_data.get("email", ""),
+                "role": user_data.get("role", "student")
+            },
+            "total_documents": len(documents),
+            "total_sessions": len(sessions),
+            "total_messages": len(messages),
+            "study_streak": self._calculate_study_streak(sessions),
+            "recent_documents": json.dumps([{
+                "filename": doc.get("filename", "Unknown"),
+                "upload_date": doc.get("upload_date", ""),
+                "file_type": doc.get("file_type", "unknown")
+            } for doc in recent_docs], indent=2),
+            "recent_sessions": json.dumps([{
+                "session_id": str(session.get("_id")),
+                "created_at": session.get("created_at", ""),
+                "message_count": len([msg for msg in messages if str(msg.get("session_id")) == str(session.get("_id"))])
+            } for session in recent_sessions], indent=2),
+            "chat_patterns": json.dumps(topic_counts, indent=2)
+        }
+
+    def _calculate_study_streak(self, sessions):
+        """Calculate current study streak from sessions"""
+        if not sessions:
+            return 0
+
+        # Sort sessions by date
+        sorted_sessions = sorted(sessions, key=lambda x: x.get("created_at", ""), reverse=True)
+
+        if not sorted_sessions:
+            return 0
+
+        streak = 0
+        current_date = datetime.utcnow().date()
+
+        for i in range(30):  # Check last 30 days
+            check_date = current_date.replace(day=current_date.day - i)
+            has_session = any(
+                session.get("created_at", "").date() == check_date
+                for session in sorted_sessions
+            )
+
+            if has_session:
+                streak += 1
+            else:
+                break
+
+        return streak
+
+    def _get_fallback_study_guide(self, context):
+        """Generate fallback study guide when AI fails"""
+        return {
+            "learning_progress": {
+                "total_documents": context.get("total_documents", 0),
+                "total_sessions": context.get("total_sessions", 0),
+                "average_score": 75,
+                "study_streak": context.get("study_streak", 0)
+            },
+            "recommendations": [
+                {
+                    "title": "Document Analysis Enhancement",
+                    "description": "Improve your ability to extract and understand key information from complex documents.",
+                    "priority": "High",
+                    "progress": 60,
+                    "tips": [
+                        "Read abstracts and conclusions first",
+                        "Identify main arguments and supporting evidence",
+                        "Practice creating summaries in your own words",
+                        "Ask questions about implications and applications"
+                    ]
+                },
+                {
+                    "title": "Research Question Development",
+                    "description": "Develop stronger research questions to guide your learning and analysis process.",
+                    "priority": "Medium",
+                    "progress": 45,
+                    "tips": [
+                        "Use the 5W1H framework (What, Why, When, Where, Who, How)",
+                        "Make questions specific and answerable",
+                        "Consider scope and feasibility",
+                        "Align questions with learning objectives"
+                    ]
+                },
+                {
+                    "title": "Critical Thinking Skills",
+                    "description": "Enhance analytical skills and evidence-based evaluation of information.",
+                    "priority": "Medium",
+                    "progress": 70,
+                    "tips": [
+                        "Evaluate source credibility and bias",
+                        "Consider multiple perspectives",
+                        "Look for evidence supporting claims",
+                        "Draw logical conclusions from data"
+                    ]
+                }
+            ],
+            "study_plan": [
+                {
+                    "week": 1,
+                    "title": "Foundation Building",
+                    "topics": ["Document structure analysis", "Information extraction", "Basic summarization"],
+                    "activities": [
+                        "Upload 3 new academic documents",
+                        "Complete 5 AI chat sessions",
+                        "Create personal summaries of each document"
+                    ]
+                },
+                {
+                    "week": 2,
+                    "title": "Skill Development",
+                    "topics": ["Question formulation", "Critical analysis", "Source evaluation"],
+                    "activities": [
+                        "Practice asking complex questions",
+                        "Analyze research papers critically",
+                        "Compare multiple sources on same topic"
+                    ]
+                },
+                {
+                    "week": 3,
+                    "title": "Application & Integration",
+                    "topics": ["Real-world application", "Knowledge integration", "Self-assessment"],
+                    "activities": [
+                        "Apply concepts to new materials",
+                        "Create comprehensive study guides",
+                        "Review and assess your progress"
+                    ]
+                }
+            ],
+            "resources": [
+                {
+                    "title": "Academic Writing and Research Guide",
+                    "description": "Comprehensive guide to academic writing, research methods, and critical analysis",
+                    "type": "PDF",
+                    "url": "/resources/academic-writing-research.pdf"
+                },
+                {
+                    "title": "Critical Thinking Toolkit",
+                    "description": "Interactive tools and exercises for developing analytical skills",
+                    "type": "Interactive",
+                    "url": "/resources/critical-thinking-interactive"
+                },
+                {
+                    "title": "Research Methodology Video Series",
+                    "description": "Step-by-step video tutorials on research methods and academic analysis",
+                    "type": "Video Series",
+                    "url": "/resources/research-methodology-videos"
+                }
+            ]
+        } 
