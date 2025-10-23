@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, Form, InputGroup, Modal } from 'react-bootstrap';
+import { Accordion } from 'react-bootstrap';
 import { formatRelativeTime } from '../utils/timestamp';
 import {
   BookOpen,
@@ -15,10 +16,26 @@ import {
   Clock,
   Users,
   Filter,
-  Help
+  Help,
+  Headphones,
+  Upload,
+  Send,
+  Mail
 } from 'lucide-react';
-  const { user } = useAuth();
-  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    subject: '',
+    category: 'general',
+    message: ''
+  });
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    // Handle contact form submission
+    console.log('Contact form submitted:', contactForm);
+    // In a real implementation, this would send the form data to the backend
+    alert('Thank you for contacting us! We\'ll respond within 24 hours.');
+    setContactForm({ subject: '', category: 'general', message: '' });
+  };
 
   // Generate personalized study resources based on user's documents and activity
   const generatePersonalizedResources = useCallback(() => {
@@ -1005,12 +1022,12 @@ This summary will be enhanced to analyze your actual uploaded documents.
                   <Col md={8}>
                     <h5 className="fw-bold mb-2">Need help finding resources?</h5>
                     <p className="mb-0 opacity-90">
-                      Can't find what you're looking for? Contact our support team or browse our FAQ section.
+                      Can't find what you're looking for? Browse our FAQ or contact our support team.
                     </p>
                   </Col>
                   <Col md={4} className="text-md-end">
-                    <Button variant="light" className="px-4" onClick={() => setShowHelpModal(true)}>
-                      Get Help
+                    <Button variant="light" className="px-4" onClick={() => setShowHelpSections(!showHelpSections)}>
+                      {showHelpSections ? 'Hide Help' : 'Get Help'}
                     </Button>
                   </Col>
                 </Row>
@@ -1018,124 +1035,277 @@ This summary will be enhanced to analyze your actual uploaded documents.
             </Card>
           </Col>
         </Row>
+
+        {/* Inline Help Sections */}
+        {showHelpSections && (
+          <>
+            {/* FAQ Section */}
+            <Row className="mt-4">
+              <Col>
+                <Card className="glass">
+                  <Card.Body className="p-4">
+                    <div className="d-flex align-items-center mb-4">
+                      <div className="bg-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                           style={{width: '48px', height: '48px'}}>
+                        <HelpCircle size={24} className="text-white" />
+                      </div>
+                      <div>
+                        <h5 className="mb-1 fw-bold">Frequently Asked Questions</h5>
+                        <small className="text-muted">Find quick answers to common questions</small>
+                      </div>
+                    </div>
+
+                    <Accordion>
+                      <Accordion.Item eventKey="getting-started">
+                        <Accordion.Header>
+                          <strong>Getting Started</strong>
+                        </Accordion.Header>
+                        <Accordion.Body>
+                          <div className="mb-3">
+                            <h6>How do I create an account?</h6>
+                            <p className="text-muted small mb-2">You can create an account by clicking the "Register" button on the login page. Fill in your details including your full name, email address, and password. You can register as either a Student or request Admin access.</p>
+                          </div>
+                          <div className="mb-3">
+                            <h6>What types of documents can I upload?</h6>
+                            <p className="text-muted small mb-2">SmartDocQ supports various document formats including PDF, DOCX, DOC, TXT, and other text-based files. We recommend PDF format for best results as it preserves formatting and structure.</p>
+                          </div>
+                          <div>
+                            <h6>How do I upload my first document?</h6>
+                            <p className="text-muted small mb-0">After logging in, navigate to the "Upload" section from your dashboard. Click the upload area or drag and drop your document. The system will automatically process and analyze your document using AI.</p>
+                          </div>
+                        </Accordion.Body>
+                      </Accordion.Item>
+
+                      <Accordion.Item eventKey="ai-features">
+                        <Accordion.Header>
+                          <strong>AI Chat & Analysis</strong>
+                        </Accordion.Header>
+                        <Accordion.Body>
+                          <div className="mb-3">
+                            <h6>How does the AI chat feature work?</h6>
+                            <p className="text-muted small mb-2">Our AI uses advanced natural language processing to understand your questions about uploaded documents. Simply ask questions in plain English, and the AI will provide accurate answers based on the content of your documents with source citations.</p>
+                          </div>
+                          <div className="mb-3">
+                            <h6>What types of questions can I ask?</h6>
+                            <p className="text-muted small mb-2">You can ask any question related to your documents including: "What is the main topic?", "Explain this concept", "What are the key findings?", "Compare these two sections", or "What does this data show?"</p>
+                          </div>
+                          <div>
+                            <h6>How accurate are the AI responses?</h6>
+                            <p className="text-muted small mb-0">Our AI provides highly accurate responses based on the actual content of your documents. All answers include source citations so you can verify the information. The system continuously learns and improves from user interactions.</p>
+                          </div>
+                        </Accordion.Body>
+                      </Accordion.Item>
+
+                      <Accordion.Item eventKey="study-resources">
+                        <Accordion.Header>
+                          <strong>Study Resources & Personalization</strong>
+                        </Accordion.Header>
+                        <Accordion.Body>
+                          <div className="mb-3">
+                            <h6>What is the Personal Study Guide?</h6>
+                            <p className="text-muted small mb-2">The Personal Study Guide is an AI-generated learning plan tailored specifically to you. It analyzes your uploaded documents, chat history, and learning patterns to create personalized recommendations, study plans, and resource suggestions.</p>
+                          </div>
+                          <div className="mb-3">
+                            <h6>How often is my Personal Study Guide updated?</h6>
+                            <p className="text-muted small mb-2">Your study guide updates automatically as you upload new documents, engage in chat sessions, and use the platform. The AI continuously analyzes your learning progress and adjusts recommendations accordingly.</p>
+                          </div>
+                          <div>
+                            <h6>What is the Document Summary feature?</h6>
+                            <p className="text-muted small mb-0">The Document Summary feature analyzes all your uploaded documents and creates a comprehensive overview including key topics, themes, gaps in knowledge, and personalized study recommendations based on your materials.</p>
+                          </div>
+                        </Accordion.Body>
+                      </Accordion.Item>
+                    </Accordion>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Contact Section */}
+            <Row className="mt-4">
+              <Col>
+                <Card className="glass">
+                  <Card.Body className="p-4">
+                    <div className="d-flex align-items-center mb-4">
+                      <div className="bg-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                           style={{width: '48px', height: '48px'}}>
+                        <Headphones size={24} className="text-white" />
+                      </div>
+                      <div>
+                        <h5 className="mb-1 fw-bold">Contact Support</h5>
+                        <small className="text-muted">Get personalized help from our team</small>
+                      </div>
+                    </div>
+
+                    <Row className="mb-4">
+                      <Col md={8}>
+                        <Form onSubmit={handleContactSubmit}>
+                          <Row className="mb-3">
+                            <Col md={6}>
+                              <Form.Group>
+                                <Form.Label>Full Name</Form.Label>
+                                <Form.Control
+                                  type="text"
+                                  value={user?.fullName || ''}
+                                  readOnly
+                                  className="bg-light"
+                                />
+                              </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                              <Form.Group>
+                                <Form.Label>Email Address</Form.Label>
+                                <Form.Control
+                                  type="email"
+                                  value={user?.email || ''}
+                                  readOnly
+                                  className="bg-light"
+                                />
+                              </Form.Group>
+                            </Col>
+                          </Row>
+
+                          <Form.Group className="mb-3">
+                            <Form.Label>Subject</Form.Label>
+                            <Form.Control
+                              type="text"
+                              placeholder="Brief description of your inquiry"
+                              value={contactForm.subject}
+                              onChange={(e) => setContactForm({...contactForm, subject: e.target.value})}
+                              required
+                            />
+                          </Form.Group>
+
+                          <Form.Group className="mb-3">
+                            <Form.Label>Category</Form.Label>
+                            <Form.Select
+                              value={contactForm.category}
+                              onChange={(e) => setContactForm({...contactForm, category: e.target.value})}
+                            >
+                              <option value="general">General Inquiry</option>
+                              <option value="technical">Technical Support</option>
+                              <option value="account">Account Issues</option>
+                              <option value="feature">Feature Request</option>
+                              <option value="bug">Bug Report</option>
+                            </Form.Select>
+                          </Form.Group>
+
+                          <Form.Group className="mb-3">
+                            <Form.Label>Message</Form.Label>
+                            <Form.Control
+                              as="textarea"
+                              rows={4}
+                              placeholder="Please describe your question or issue in detail..."
+                              value={contactForm.message}
+                              onChange={(e) => setContactForm({...contactForm, message: e.target.value})}
+                              required
+                            />
+                          </Form.Group>
+
+                          <Button type="submit" variant="primary">
+                            <Send size={16} className="me-2" />
+                            Send Message
+                          </Button>
+                        </Form>
+                      </Col>
+
+                      <Col md={4}>
+                        <div className="bg-light p-4 rounded">
+                          <h6 className="mb-3">Contact Information</h6>
+
+                          <div className="d-flex align-items-start mb-3">
+                            <Mail size={16} className="text-primary me-2 mt-1" />
+                            <div>
+                              <div className="fw-semibold small">Email Support</div>
+                              <div className="text-muted small">support@smartdocq.com</div>
+                              <div className="text-muted small">Response within 24 hours</div>
+                            </div>
+                          </div>
+
+                          <div className="d-flex align-items-start mb-3">
+                            <MessageCircle size={16} className="text-success me-2 mt-1" />
+                            <div>
+                              <div className="fw-semibold small">Live Chat</div>
+                              <div className="text-muted small">Available in-app</div>
+                              <div className="text-muted small">Instant during business hours</div>
+                            </div>
+                          </div>
+
+                          <div className="d-flex align-items-start">
+                            <Clock size={16} className="text-warning me-2 mt-1" />
+                            <div>
+                              <div className="fw-semibold small">Business Hours</div>
+                              <div className="text-muted small">Mon-Fri: 9AM-6PM EST</div>
+                              <div className="text-muted small">Sat: 10AM-4PM EST</div>
+                            </div>
+                          </div>
+                        </div>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Quick Links */}
+            <Row className="mt-4">
+              <Col>
+                <Card className="glass">
+                  <Card.Body className="p-4">
+                    <h6 className="mb-3">Quick Links</h6>
+                    <Row className="g-3">
+                      <Col md={3}>
+                        <Link to="/personal-study-guide" className="text-decoration-none">
+                          <Card className="text-center hover-lift h-100 border-0">
+                            <Card.Body className="p-3">
+                              <BookOpen size={32} className="text-primary mb-2" />
+                              <h6 className="mb-1">Study Guide</h6>
+                              <small className="text-muted">AI-powered learning</small>
+                            </Card.Body>
+                          </Card>
+                        </Link>
+                      </Col>
+                      <Col md={3}>
+                        <Link to="/documents" className="text-decoration-none">
+                          <Card className="text-center hover-lift h-100 border-0">
+                            <Card.Body className="p-3">
+                              <Upload size={32} className="text-success mb-2" />
+                              <h6 className="mb-1">Upload</h6>
+                              <small className="text-muted">Add documents</small>
+                            </Card.Body>
+                          </Card>
+                        </Link>
+                      </Col>
+                      <Col md={3}>
+                        <Link to="/chat" className="text-decoration-none">
+                          <Card className="text-center hover-lift h-100 border-0">
+                            <Card.Body className="p-3">
+                              <MessageCircle size={32} className="text-info mb-2" />
+                              <h6 className="mb-1">AI Chat</h6>
+                              <small className="text-muted">Ask questions</small>
+                            </Card.Body>
+                          </Card>
+                        </Link>
+                      </Col>
+                      <Col md={3}>
+                        <Link to="/history" className="text-decoration-none">
+                          <Card className="text-center hover-lift h-100 border-0">
+                            <Card.Body className="p-3">
+                              <Clock size={32} className="text-warning mb-2" />
+                              <h6 className="mb-1">History</h6>
+                              <small className="text-muted">View progress</small>
+                            </Card.Body>
+                          </Card>
+                        </Link>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+          </>
+        )}
       </Container>
-
-      {/* Help Modal */}
-      <Modal show={showHelpModal} onHide={() => setShowHelpModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Help & Support</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="text-center mb-4">
-            <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
-                 style={{width: '60px', height: '60px'}}>
-              <BookOpen size={30} className="text-white" />
-            </div>
-            <h5>How can we help you today?</h5>
-            <p className="text-muted">Choose from the options below to get the assistance you need.</p>
-          </div>
-
-          <Row className="g-3">
-            <Col md={6}>
-              <Card className="text-center hover-lift h-100">
-                <Card.Body className="p-3">
-                  <div className="bg-info rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
-                       style={{width: '40px', height: '40px'}}>
-                    <Search size={20} className="text-white" />
-                  </div>
-                  <h6 className="mb-2">Browse FAQ</h6>
-                  <p className="text-muted small mb-3">
-                    Find answers to common questions about using SmartDocQ features.
-                  </p>
-                  <Link to="/faq" className="text-decoration-none">
-                    <Button variant="outline-info" size="sm" className="w-100">
-                      View FAQ
-                    </Button>
-                  </Link>
-                </Card.Body>
-              </Card>
-            </Col>
-
-            <Col md={6}>
-              <Card className="text-center hover-lift h-100">
-                <Card.Body className="p-3">
-                  <div className="bg-success rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
-                       style={{width: '40px', height: '40px'}}>
-                    <Users size={20} className="text-white" />
-                  </div>
-                  <h6 className="mb-2">Contact Support</h6>
-                  <p className="text-muted small mb-3">
-                    Get in touch with our support team for personalized assistance.
-                  </p>
-                  <Link to="/contact" className="text-decoration-none">
-                    <Button variant="outline-success" size="sm" className="w-100">
-                      Contact Us
-                    </Button>
-                  </Link>
-                </Card.Body>
-              </Card>
-            </Col>
-
-            <Col md={6}>
-              <Card className="text-center hover-lift h-100">
-                <Card.Body className="p-3">
-                  <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
-                       style={{width: '40px', height: '40px'}}>
-                    <FileText size={20} className="text-white" />
-                  </div>
-                  <h6 className="mb-2">Documentation</h6>
-                  <p className="text-muted small mb-3">
-                    Read detailed guides and tutorials on using SmartDocQ effectively.
-                  </p>
-                  <Link to="/faq" className="text-decoration-none">
-                    <Button variant="outline-warning" size="sm" className="w-100">
-                      Read Docs
-                    </Button>
-                  </Link>
-                </Card.Body>
-              </Card>
-            </Col>
-
-            <Col md={6}>
-              <Card className="text-center hover-lift h-100">
-                <Card.Body className="p-3">
-                  <div className="bg-danger rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
-                       style={{width: '40px', height: '40px'}}>
-                    <Link2 size={20} className="text-white" />
-                  </div>
-                  <h6 className="mb-2">Community</h6>
-                  <p className="text-muted small mb-3">
-                    Connect with other users and share your learning experiences.
-                  </p>
-                  <Button
-                    variant="outline-danger"
-                    size="sm"
-                    className="w-100"
-                    href="mailto:community@smartdocq.com?subject=Community Interest"
-                  >
-                    Join Community
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-
-          <div className="mt-4 p-3 bg-light rounded">
-            <h6 className="mb-2">Quick Tips</h6>
-            <ul className="small text-muted mb-0">
-              <li>Upload documents in PDF, DOCX, or TXT format for best results</li>
-              <li>Use specific questions when chatting with the AI for more accurate answers</li>
-              <li>Check the Study Resources section regularly for personalized recommendations</li>
-              <li>Review your chat history to track your learning progress</li>
-            </ul>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowHelpModal(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </div>
   );
 };
