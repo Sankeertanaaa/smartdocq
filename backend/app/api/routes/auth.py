@@ -150,57 +150,104 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 @router.post("/register", response_model=dict)
 async def register(user_data: UserCreate):
     """Register a new user"""
+    print(f"📝 Registration attempt: {user_data.email} (role: {user_data.role})")
+    print(f"📝 Full name: {user_data.fullName} (length: {len(user_data.fullName)})")
+
     users_collection = get_users_collection()
     if users_collection is None:
+        print("❌ Database connection failed - users_collection is None")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Registration service unavailable (database not connected)"
         )
-    
-    # Check if email already exists
-    existing_user = await users_collection.find_one({"email": user_data.email.lower()})
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+
+    # Validate input data
+    try:
+        # Check if email already exists
+        existing_user = await users_collection.find_one({"email": user_data.email.lower()})
+        if existing_user:
+            print(f"❌ Email already registered: {user_data.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+        # Validate role
+        if user_data.role not in ["student", "guest"]:
+            print(f"❌ Invalid role: {user_data.role}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid role. Only 'student' and 'guest' roles are allowed for registration"
+            )
+
+        # Validate fullName length
+        if len(user_data.fullName.strip()) < 2:
+            print(f"❌ Full name too short: '{user_data.fullName}'")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Full name must be at least 2 characters long"
+            )
+
+        if len(user_data.fullName) > 100:
+            print(f"❌ Full name too long: {len(user_data.fullName)} chars")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Full name must be less than 100 characters long"
+            )
+
+        # Validate password length
+        if len(user_data.password) < 8:
+            print(f"❌ Password too short: {len(user_data.password)} chars")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 8 characters long"
+            )
+
+        print(f"✅ All validations passed, creating user...")
+
+        # Create new user
+        hashed_password = hash_password(user_data.password)
+
+        new_user = UserModel(
+            full_name=user_data.fullName.strip(),
+            email=user_data.email.lower(),
+            hashed_password=hashed_password,
+            role=user_data.role,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
-    
-    # Validate role
-    if user_data.role not in ["student", "guest"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid role. Only 'student' and 'guest' roles are allowed for registration"
-        )
-    
-    # Create new user
-    hashed_password = hash_password(user_data.password)
-    
-    new_user = UserModel(
-        full_name=user_data.fullName,
-        email=user_data.email.lower(),
-        hashed_password=hashed_password,
-        role=user_data.role,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
-    )
-    
-    # Store user in MongoDB
-    result = await users_collection.insert_one(new_user.dict(by_alias=True))
-    
-    if result.inserted_id:
-        return {
-            "message": "User registered successfully",
-            "user": {
-                "id": str(result.inserted_id),
-                "fullName": new_user.full_name,
-                "email": new_user.email,
-                "role": new_user.role
+
+        # Store user in MongoDB
+        result = await users_collection.insert_one(new_user.dict(by_alias=True))
+
+        if result.inserted_id:
+            print(f"✅ User registered successfully: {user_data.email} (ID: {result.inserted_id})")
+            return {
+                "message": "User registered successfully",
+                "user": {
+                    "id": str(result.inserted_id),
+                    "fullName": new_user.full_name,
+                    "email": new_user.email,
+                    "role": new_user.role
+                }
             }
-        }
-    else:
+        else:
+            print("❌ Failed to insert user into database")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create user"
+            )
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        print(f"❌ Unexpected error during registration: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create user"
+            detail=f"Registration failed: {str(e)}"
         )
 
 @router.post("/login", response_model=Token)

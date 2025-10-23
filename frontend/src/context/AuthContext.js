@@ -100,12 +100,21 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await authService.register(userData);
+      // Only send the fields required by the backend
+      const registrationData = {
+        fullName: userData.fullName,
+        email: userData.email,
+        password: userData.password,
+        role: userData.role
+      };
+      console.log('Sending registration data:', { ...registrationData, password: '[HIDDEN]' });
+      const response = await authService.register(registrationData);
       return { success: true, message: response.message };
     } catch (error) {
+      console.error('Registration error:', error);
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Registration failed' 
+        error: error.response?.data?.detail || error.response?.data?.message || 'Registration failed' 
       };
     }
   };

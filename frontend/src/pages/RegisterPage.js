@@ -61,16 +61,30 @@ const RegisterPage = () => {
     e.preventDefault();
     if (!validateForm()) return;
     setLoading(true);
+    setError('');
     try {
+      console.log('Submitting registration form:', {
+        fullName: formData.fullName,
+        email: formData.email,
+        role: formData.role,
+        passwordLength: formData.password.length
+      });
+
       const result = await register(formData);
+      console.log('Registration result:', result);
+
       if (result.success) {
         setSuccessMessage('Registration successful! Redirecting to login...');
-        setTimeout(() => navigate('/login', { 
+        setTimeout(() => navigate('/login', {
           state: { message: 'Registration successful! Please sign in to continue.' }
         }), 2000);
-      } else setError(result.error);
-    } catch {
-      setError('Unexpected error. Please try again.');
+      } else {
+        console.error('Registration failed:', result.error);
+        setError(result.error || 'Registration failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setError('Unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }

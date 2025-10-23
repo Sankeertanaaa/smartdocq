@@ -52,6 +52,10 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=8, description="User's password")
     role: str = Field(..., description="User role (student, guest)")
 
+    class Config:
+        # Reject extra fields to prevent validation errors
+        extra = "forbid"
+
 class UserLogin(BaseModel):
     email: EmailStr = Field(..., description="User's email address")
     password: str = Field(..., description="User's password")
