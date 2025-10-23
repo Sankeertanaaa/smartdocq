@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Container } from 'react-bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import Header from './components/Header';
 import ProtectedRoute from './components/ProtectedRoute';
 import UploadPage from './pages/UploadPage';
@@ -19,7 +20,6 @@ import GuestDemo from './pages/GuestDemo';
 import GuestResponses from './pages/GuestResponses';
 import GuestHistory from './pages/GuestHistory';
 import GuestDocuments from './pages/GuestDocuments';
-import SharedChat from './pages/SharedChat';
 import { ChatProvider } from './context/ChatContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -62,7 +62,6 @@ function App() {
                 {/* Public Routes */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
-                <Route path="/shared/:sessionId" element={<SharedChat />} />
                 
                 {/* Protected Dashboard Routes */}
                 <Route 

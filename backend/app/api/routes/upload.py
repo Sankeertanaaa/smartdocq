@@ -1,43 +1,27 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
-import shutil
-from typing import Optional
+import uuid
+from datetime import datetime
 from app.services.document_processor import DocumentProcessor
 from app.services.vector_store import VectorStore
 from app.models.schemas import UploadResponse, ErrorResponse
 from app.services.database import get_documents_collection, get_sessions_collection
+from app.api.routes.auth import get_current_user
 
 router = APIRouter()
 document_processor = DocumentProcessor()
 # Import the shared VectorStore instance from chat module
 from app.api.routes.chat import get_vector_store
-security = HTTPBearer(auto_error=False)
 
 @router.get("/test")
 async def test_endpoint():
     """Test endpoint to verify routing is working"""
     return {"message": "Upload router is working!", "status": "ok"}
 
-async def get_current_user_optional(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[dict]:
-    """Get current user if authenticated, otherwise return None"""
-    print(f"get_current_user_optional called with credentials: {credentials is not None}")
-    if not credentials:
-        print("No credentials provided")
-        return None
-    try:
-        user = await get_current_user(credentials)
-        print(f"User authenticated: {user.get('email') if user else 'None'}")
-        return user
-    except HTTPException as e:
-        print(f"Authentication failed: {e.detail}")
-        return None
-
 @router.post("/upload", response_model=UploadResponse)
 async def upload_document(
     file: UploadFile = File(...),
-    current_user: Optional[dict] = Depends(get_current_user_optional)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Upload and process a document for question answering
@@ -60,7 +44,7 @@ async def upload_document(
             raise HTTPException(status_code=400, detail="No file provided")
 
         print(f"File received: {file.filename}")
-        print(f"Current user: {current_user.get('email') if current_user else 'None'}")
+        print(f"Current user: {current_user.get('email')}")
 
         # Check file size
         print("Reading file content...")
@@ -121,9 +105,7 @@ async def upload_document(
         print(f"File size on disk: {os.path.getsize(file_path) if os.path.exists(file_path) else 'unknown'}")
 
         # Process document synchronously so chat can use it immediately
-        user_id = None
-        if current_user:
-            user_id = str(current_user.get("_id", current_user.get("id")))
+        user_id = str(current_user.get("_id", current_user.get("id")))
 
         print(f"Processing document with user_id: {user_id}")
         try:
@@ -179,14 +161,6 @@ async def upload_document(
         try:
             documents_collection = get_documents_collection()
 
-            # Check if user wants to make document public (default to private)
-            is_public = False
-            public_title = None
-            public_description = None
-
-            # For now, documents are private by default
-            # TODO: Add UI option to make documents public during upload
-
             document_record = {
                 "document_id": result["document_id"],
                 "filename": result["filename"],
@@ -195,10 +169,7 @@ async def upload_document(
                 "user_id": user_id,
                 "uploaded_at": datetime.utcnow(),
                 "status": "processed",
-                "chunk_count": len(result["chunks"]),
-                "is_public": is_public,
-                "public_title": public_title,
-                "public_description": public_description
+                "chunk_count": len(result["chunks"])
             }
             await documents_collection.insert_one(document_record)
             print(f"✅ Document record saved to MongoDB: {result['document_id']}")
@@ -260,57 +231,24 @@ async def process_document_background(file_path: str, filename: str):
             os.remove(file_path)
 
 @router.get("/documents")
-async def list_documents(current_user: Optional[dict] = Depends(get_current_user_optional)):
+async def list_documents(current_user: dict = Depends(get_current_user)):
     """
-    List documents that user uploaded OR accessed in their chat sessions (or all for admin)
+    List documents that user uploaded (or all for admin)
     """
     try:
-        from app.services.database import get_sessions_collection, get_documents_collection
-        
+        from app.services.database import get_documents_collection
+
         stats = get_vector_store().get_collection_stats()
         all_docs = get_vector_store().list_documents()
-        
+
         print(f"📚 Documents endpoint called")
         print(f"   Total docs in vector store: {len(all_docs)}")
         print(f"   Total chunks: {stats['total_chunks']}")
-        
-        # If no user is authenticated (guest), return only public documents
-        if not current_user:
-            print("   👤 Guest user - returning only public documents")
-            documents_collection = get_documents_collection()
 
-            # Get public documents from MongoDB
-            public_docs_query = await documents_collection.find({"is_public": True}).to_list(length=None)
-            public_doc_ids = {doc["document_id"] for doc in public_docs_query}
-
-            # Filter vector store results to only public documents
-            public_documents = []
-            for doc in all_docs:
-                if doc["document_id"] in public_doc_ids:
-                    # Get public metadata from MongoDB
-                    doc_record = next((d for d in public_docs_query if d["document_id"] == doc["document_id"]), None)
-                    if doc_record:
-                        public_doc = doc.copy()
-                        public_doc.update({
-                            "public_title": doc_record.get("public_title"),
-                            "public_description": doc_record.get("public_description"),
-                            "uploaded_by": "Public User",  # Hide actual user info
-                            "is_public": True
-                        })
-                        public_documents.append(public_doc)
-
-            print(f"   📊 Returning {len(public_documents)} public documents for guest")
-            return {
-                "total_chunks": stats["total_chunks"],
-                "collection_name": stats["collection_name"],
-                "documents": public_documents,
-                "is_guest_view": True
-            }
-        
         user_id = str(current_user.get("_id", current_user.get("id")))
         user_role = current_user.get("role")
         print(f"   User: {current_user.get('email')} (ID: {user_id}, Role: {user_role})")
-        
+
         # If user is admin, return all documents
         if user_role == "admin":
             print(f"   ✅ Admin user - returning all {len(all_docs)} documents")
@@ -319,16 +257,13 @@ async def list_documents(current_user: Optional[dict] = Depends(get_current_user
             # Get document metadata for all documents
             all_doc_records = await documents_collection.find({}).to_list(length=None)
 
-            # Enhance documents with public metadata
+            # Enhance documents with metadata
             enhanced_docs = []
             for doc in all_docs:
                 doc_record = next((d for d in all_doc_records if d["document_id"] == doc["document_id"]), None)
                 enhanced_doc = doc.copy()
                 if doc_record:
                     enhanced_doc.update({
-                        "is_public": doc_record.get("is_public", False),
-                        "public_title": doc_record.get("public_title"),
-                        "public_description": doc_record.get("public_description"),
                         "user_email": doc_record.get("user_id")  # For admin reference
                     })
                 enhanced_docs.append(enhanced_doc)
@@ -340,27 +275,10 @@ async def list_documents(current_user: Optional[dict] = Depends(get_current_user
                 "is_admin_view": True
             }
 
-        # For regular users, show documents they uploaded OR accessed in sessions OR public documents
+        # For regular users, show only documents they uploaded
         print(f"   🔍 Finding documents for user {user_id}")
 
-        # Get document IDs from user's sessions
-        sessions_collection = get_sessions_collection()
-        user_sessions = await sessions_collection.find({"user_id": user_id}).to_list(length=None)
-
-        accessed_doc_ids = set()
-        for session in user_sessions:
-            doc_ids = session.get("document_ids", [])
-            accessed_doc_ids.update(doc_ids)
-
-        print(f"   📋 User has accessed {len(accessed_doc_ids)} documents in sessions")
-
-        # Get public documents that user can also access
-        documents_collection = get_documents_collection()
-        public_docs = await documents_collection.find({"is_public": True}).to_list(length=None)
-        public_doc_ids = {doc["document_id"] for doc in public_docs}
-
         user_docs = []
-
         for doc in all_docs:
             doc_id = doc["document_id"]
 
@@ -373,39 +291,19 @@ async def list_documents(current_user: Optional[dict] = Depends(get_current_user
                 first_chunk_metadata = doc_chunks[0].get("metadata", {})
                 chunk_user_id = first_chunk_metadata.get("user_id")
 
-                # Include if: user uploaded it OR user accessed it in a session OR it's public
-                should_include = False
-                doc_record = next((d for d in public_docs if d["document_id"] == doc_id), None)
-
+                # Include if user uploaded it
                 if chunk_user_id == user_id:
                     print(f"         ✅ User uploaded - adding")
-                    should_include = True
-                elif doc_id in accessed_doc_ids:
-                    print(f"         ✅ User accessed in session - adding")
-                    should_include = True
-                elif doc_record and doc_record.get("is_public", False):
-                    print(f"         ✅ Public document - adding")
-                    should_include = True
+                    user_docs.append(doc)
                 else:
                     print(f"         ❌ Not accessible (owner: {chunk_user_id})")
-
-                if should_include:
-                    enhanced_doc = doc.copy()
-                    if doc_record:
-                        enhanced_doc.update({
-                            "is_public": doc_record.get("is_public", False),
-                            "public_title": doc_record.get("public_title"),
-                            "public_description": doc_record.get("public_description")
-                        })
-                    user_docs.append(enhanced_doc)
 
         print(f"   📊 Returning {len(user_docs)} documents for user")
 
         return {
             "total_chunks": len([chunk for doc in user_docs for chunk in get_vector_store().get_document_chunks(doc["document_id"])]),
             "collection_name": stats["collection_name"],
-            "documents": user_docs,
-            "public_documents_count": len([doc for doc in user_docs if doc.get("is_public", False)])
+            "documents": user_docs
         }
     except Exception as e:
         print(f"❌ Error in list_documents: {str(e)}")

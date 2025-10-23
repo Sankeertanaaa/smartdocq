@@ -240,23 +240,6 @@ export const feedbackService = {
   },
 };
 
-export const publicService = {
-  getSharedSession: async (sessionId) => {
-    const response = await api.get(`/api/history/shared/${sessionId}`);
-    return response.data;
-  },
-
-  getPublicStats: async () => {
-    const response = await api.get('/api/history/public/stats');
-    return response.data;
-  },
-
-  getPublicDocuments: async () => {
-    const response = await api.get('/api/history/public/documents');
-    return response.data;
-  },
-};
-
 export const demoService = {
   getSamples: async () => {
     const response = await api.get('/api/demo/samples');

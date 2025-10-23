@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { History, Trash2, Calendar, MessageCircle, Clock, Eye } from 'lucide-react';
 import { historyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { formatRelativeTime, formatTimeOnly } from '../utils/timestamp';
+import { formatRelativeTime, formatTimeOnly, parseUTCTimestamp } from '../utils/timestamp';
 
 const HistoryPage = () => {
   const { user } = useAuth();
@@ -134,10 +134,6 @@ const HistoryPage = () => {
     }
   }, [selectedSession, loadSessions]);
 
-  const formatTime = useCallback((dateString) => {
-    return formatTimeOnly(dateString);
-  }, []);
-
   useEffect(() => {
     if (user) {
       loadSessions();
@@ -214,7 +210,7 @@ const HistoryPage = () => {
                         </div>
                         <div className="flex items-center space-x-2 mt-1 text-xs text-gray-500">
                           <Calendar className="h-3 w-3" />
-                          <span>{getRelativeTime(session.last_activity)}</span>
+                          <span>{formatRelativeTime(session.last_activity)}</span>
                         </div>
                         <div className="flex items-center space-x-2 mt-1 text-xs text-gray-500">
                           <Clock className="h-3 w-3" />
@@ -279,7 +275,7 @@ const HistoryPage = () => {
                             {message.type === 'user' ? 'You' : 'AI Assistant'}
                           </span>
                           <span className="text-xs text-gray-500">
-                            {getRelativeTime(message.timestamp)}
+                            {formatRelativeTime(message.timestamp)}
                           </span>
                         </div>
                         <div className="text-sm text-gray-700 leading-relaxed">

@@ -4,7 +4,7 @@ from datetime import datetime
 from app.services.database import get_messages_collection, get_sessions_collection
 from app.models.mongodb_models import MessageModel, SessionModel
 from app.models.schemas import ChatHistoryResponse, ChatHistoryItem
-from app.api.routes.auth import get_current_user, get_current_user_optional
+from app.api.routes.auth import get_current_user
 import json
 import os
 
@@ -25,9 +25,9 @@ async def get_chat_history(session_id: Optional[str] = None, limit: int = 50, cu
         if session_id:
             # Get history for specific session
             query = {"session_id": session_id}
-            # Regular users can only see their own sessions or public sessions
+            # Regular users can only see their own sessions
             if user_role != "admin":
-                query["$or"] = [{"user_id": user_id}, {"is_public": True}]
+                query["user_id"] = user_id
             cursor = messages_collection.find(query).sort("timestamp", -1).limit(limit)
             messages = await cursor.to_list(length=limit)
             
@@ -36,7 +36,6 @@ async def get_chat_history(session_id: Optional[str] = None, limit: int = 50, cu
             for msg in messages:
                 # Ensure timestamp is properly formatted as ISO string
                 timestamp = msg["timestamp"]
-                print(f"🔍 MongoDB message timestamp: {timestamp}, Type: {type(timestamp)}")
                 if isinstance(timestamp, datetime):
                     timestamp = timestamp.isoformat()
                 elif not isinstance(timestamp, str):
@@ -60,9 +59,9 @@ async def get_chat_history(session_id: Optional[str] = None, limit: int = 50, cu
         else:
             # Get all history
             query = {}
-            # Regular users see only their own messages or public messages
+            # Regular users see only their own messages
             if user_role != "admin":
-                query["$or"] = [{"user_id": user_id}, {"is_public": True}]
+                query["user_id"] = user_id
             cursor = messages_collection.find(query).sort("timestamp", -1).limit(limit)
             messages = await cursor.to_list(length=limit)
             
@@ -96,7 +95,7 @@ async def get_chat_history(session_id: Optional[str] = None, limit: int = 50, cu
         raise HTTPException(status_code=500, detail=f"Failed to get chat history: {str(e)}")
 
 @router.post("/history")
-async def save_chat_history(chat_item: ChatHistoryItem, current_user: Optional[dict] = Depends(get_current_user_optional)):
+async def save_chat_history(chat_item: ChatHistoryItem, current_user: dict = Depends(get_current_user)):
     """
     Save a chat interaction to history
     """
@@ -104,14 +103,8 @@ async def save_chat_history(chat_item: ChatHistoryItem, current_user: Optional[d
         messages_collection = get_messages_collection()
         sessions_collection = get_sessions_collection()
 
-        # Check if session is public
-        session = await sessions_collection.find_one({"session_id": chat_item.session_id})
-        is_public = session.get("is_public", False) if session else False
-
         # Determine user_id
-        user_id = None
-        if current_user:
-            user_id = str(current_user.get("_id", current_user.get("id")))
+        user_id = str(current_user.get("_id", current_user.get("id")))
 
         # Save user message
         user_message = MessageModel(
@@ -119,8 +112,7 @@ async def save_chat_history(chat_item: ChatHistoryItem, current_user: Optional[d
             message_type="user",
             content=chat_item.question,
             timestamp=chat_item.timestamp,
-            user_id=user_id,
-            is_public=is_public
+            user_id=user_id
         )
         await messages_collection.insert_one(user_message.dict(by_alias=True))
 
@@ -131,8 +123,7 @@ async def save_chat_history(chat_item: ChatHistoryItem, current_user: Optional[d
             content=chat_item.answer,
             sources=chat_item.sources,
             timestamp=chat_item.timestamp,
-            user_id=user_id,
-            is_public=is_public
+            user_id=user_id
         )
         await messages_collection.insert_one(ai_message.dict(by_alias=True))
 
@@ -142,8 +133,7 @@ async def save_chat_history(chat_item: ChatHistoryItem, current_user: Optional[d
             {
                 "$set": {
                     "last_activity": chat_item.timestamp,
-                    "updated_at": datetime.utcnow().isoformat(),
-                    "is_public": is_public
+                    "updated_at": datetime.utcnow().isoformat()
                 },
                 "$inc": {"message_count": 2}  # Increment by 2 (user + AI message)
             },
@@ -201,9 +191,9 @@ async def list_sessions(include_archived: bool = False, limit: int = 50, current
         # Build query filter
         query_filter = {}
 
-        # Admin sees all sessions, regular users see only their own or public sessions
+        # Admin sees all sessions, regular users see only their own sessions
         if user_role != "admin":
-            query_filter["$or"] = [{"user_id": user_id}, {"is_public": True}]
+            query_filter["user_id"] = user_id
 
         if not include_archived:
             query_filter["is_archived"] = {"$ne": True}
@@ -248,7 +238,6 @@ async def list_sessions(include_archived: bool = False, limit: int = 50, current
                 "user_id": session.get("user_id"),
                 "is_guest": session.get("is_guest", False),
                 "is_archived": session.get("is_archived", False),
-                "is_public": session.get("is_public", False),
                 "tags": session.get("tags", []),
                 "summary": session.get("summary"),
                 "document_ids": session.get("document_ids", [])
@@ -293,8 +282,7 @@ async def list_user_sessions(user_id: str, current_user: dict = Depends(get_curr
                 "title": session.get("title", "New Chat"),
                 "created_at": created_at,
                 "user_id": session.get("user_id"),
-                "document_ids": session.get("document_ids", []),
-                "is_public": session.get("is_public", False)
+                "document_ids": session.get("document_ids", [])
             })
         
         return {"sessions": session_list}
@@ -503,14 +491,14 @@ async def search_chat_history(query: str, limit: int = 20, current_user: dict = 
         user_id = str(current_user["_id"])
         user_role = current_user.get("role")
         
-        # Build search filter - always filter by user_id or public sessions
+        # Build search filter - always filter by user_id
         search_filter = {
             "$text": {"$search": query}
         }
 
-        # Regular users can only search their own sessions or public sessions
+        # Regular users can only search their own sessions
         if user_role != "admin":
-            search_filter["$or"] = [{"user_id": user_id}, {"is_public": True}]
+            search_filter["user_id"] = user_id
         
         # Search messages
         cursor = messages_collection.find(
@@ -606,131 +594,3 @@ async def unarchive_session(session_id: str):
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to unarchive session: {str(e)}")
-
-@router.get("/shared/{session_id}")
-async def get_shared_session(session_id: str):
-    """
-    Get a public shared session (no authentication required)
-    """
-    try:
-        sessions_collection = get_sessions_collection()
-        messages_collection = get_messages_collection()
-        
-        # Check if session exists and is public
-        session = await sessions_collection.find_one({
-            "session_id": session_id,
-            "is_public": True
-        })
-        
-        if not session:
-            raise HTTPException(status_code=404, detail="Shared session not found or not public")
-        
-        # Get messages for this session
-        cursor = messages_collection.find({"session_id": session_id}).sort("timestamp", 1)
-        messages = await cursor.to_list(length=None)
-        
-        # Format messages
-        formatted_messages = []
-        for msg in messages:
-            # Ensure timestamp is properly formatted as ISO string
-            timestamp = msg["timestamp"]
-            if isinstance(timestamp, datetime):
-                timestamp = timestamp.isoformat()
-            elif not isinstance(timestamp, str):
-                timestamp = str(timestamp)
-
-            formatted_messages.append({
-                "type": msg["message_type"],
-                "content": msg["content"],
-                "timestamp": timestamp,
-                "sources": msg.get("sources", [])
-            })
-        
-        # Format session info
-        session_info = {
-            "session_id": session["session_id"],
-            "title": session.get("title", "Shared Chat"),
-            "created_at": session.get("created_at"),
-            "message_count": session.get("message_count", 0),
-            "is_public": True
-        }
-        
-        return {
-            "session": session_info,
-            "messages": formatted_messages
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get shared session: {str(e)}")
-
-@router.get("/public/stats")
-async def get_public_stats():
-    """
-    Get public statistics for guest dashboard (no authentication required)
-    """
-    try:
-        sessions_collection = get_sessions_collection()
-        messages_collection = get_messages_collection()
-        
-        # Count public sessions
-        public_sessions_count = await sessions_collection.count_documents({"is_public": True})
-        
-        # Get all public sessions to count messages and documents
-        public_sessions_cursor = sessions_collection.find({"is_public": True})
-        public_sessions = await public_sessions_cursor.to_list(length=None)
-        
-        # Count total messages in public sessions
-        public_session_ids = [session["session_id"] for session in public_sessions]
-        total_public_messages = 0
-        unique_documents = set()
-        
-        if public_session_ids:
-            # Count AI responses in public sessions
-            ai_messages_count = await messages_collection.count_documents({
-                "session_id": {"$in": public_session_ids},
-                "message_type": "ai"
-            })
-            total_public_messages = ai_messages_count
-            
-            # Count unique documents from public sessions
-            for session in public_sessions:
-                if session.get("document_ids"):
-                    for doc_id in session["document_ids"]:
-                        unique_documents.add(doc_id)
-        
-        return {
-            "public_responses": total_public_messages,
-            "public_documents": len(unique_documents),
-            "topics_covered": public_sessions_count,
-            "total_public_sessions": public_sessions_count
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get public stats: {str(e)}")
-
-@router.get("/public/documents")
-async def get_public_documents():
-    """
-    Get documents that are used in public sessions (no authentication required)
-    """
-    try:
-        sessions_collection = get_sessions_collection()
-        
-        # Get all public sessions
-        public_sessions_cursor = sessions_collection.find({"is_public": True})
-        public_sessions = await public_sessions_cursor.to_list(length=None)
-        
-        # Collect unique document IDs from public sessions
-        public_document_ids = set()
-        for session in public_sessions:
-            if session.get("document_ids"):
-                for doc_id in session["document_ids"]:
-                    public_document_ids.add(doc_id)
-        
-        return {
-            "public_document_ids": list(public_document_ids),
-            "total_public_documents": len(public_document_ids)
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get public documents: {str(e)}")

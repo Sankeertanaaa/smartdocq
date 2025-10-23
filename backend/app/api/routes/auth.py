@@ -92,7 +92,6 @@ async def get_user_by_id(user_id: str) -> Optional[dict]:
         return None
         
     except Exception as e:
-        print(f"❌ Error in get_user_by_id: {e}")
         import traceback
         traceback.print_exc()
         return None

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { Container, Row, Col, Card, Button, Badge, Form, InputGroup } from 'react-bootstrap';
 import { formatRelativeTime } from '../utils/timestamp';
-import { 
-  BookOpen, 
+import {
+  BookOpen,
   Search,
   ArrowLeft,
   Download,
