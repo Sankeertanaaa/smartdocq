@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { History, Trash2, Calendar, MessageCircle, Clock } from 'lucide-react';
 import { historyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -13,12 +13,12 @@ const HistoryPage = () => {
   const [error, setError] = useState(null);
 
   // Function to parse markdown-style bold text
-  const parseBoldText = (text) => {
+  const parseBoldText = useCallback((text) => {
     // Handle undefined, null, or non-string values
     if (!text || typeof text !== 'string') {
       return text || '';
     }
-    
+
     const parts = text.split(/(\*\*.*?\*\*)/g);
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
@@ -27,26 +27,20 @@ const HistoryPage = () => {
       }
       return part;
     });
-  };
+  }, []);
 
-  useEffect(() => {
-    if (user) {
-      loadSessions();
-    }
-  }, [user, loadSessions]);
-
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     try {
       setLoading(true);
       const userId = user?.id || user?._id;
-      
+
       if (!userId) {
         setSessions([]);
         return;
       }
 
       let sessions = [];
-      
+
       try {
         // Try user-specific sessions first
         const response = await historyService.listUserSessions(userId);
@@ -57,8 +51,8 @@ const HistoryPage = () => {
           const allSessionsResp = await historyService.listSessions();
           const allSessions = allSessionsResp.sessions || [];
           // Filter sessions for current user
-          sessions = allSessions.filter(session => 
-            session.user_id === userId || 
+          sessions = allSessions.filter(session =>
+            session.user_id === userId ||
             session.user_id === user?.email ||
             session.user_id === user?.id
           );
@@ -67,7 +61,7 @@ const HistoryPage = () => {
           sessions = [];
         }
       }
-      
+
       setSessions(sessions);
     } catch (err) {
       setError('Failed to load chat history');
@@ -75,17 +69,17 @@ const HistoryPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const loadSessionHistory = async (sessionId) => {
+  const loadSessionHistory = useCallback(async (sessionId) => {
     try {
       setLoading(true);
       const response = await historyService.getHistory(sessionId);
-      
+
       // Convert the API response to the expected format
       const messages = [];
       const messageMap = new Map();
-      
+
       (response.history || []).forEach(item => {
         if (item.question && !messageMap.has(`user-${item.timestamp}`)) {
           messages.push({
@@ -96,7 +90,7 @@ const HistoryPage = () => {
           });
           messageMap.set(`user-${item.timestamp}`, true);
         }
-        
+
         if (item.answer && !messageMap.has(`ai-${item.timestamp}`)) {
           messages.push({
             type: 'ai',
@@ -107,10 +101,10 @@ const HistoryPage = () => {
           messageMap.set(`ai-${item.timestamp}`, true);
         }
       });
-      
+
       // Sort messages by timestamp (ensure UTC interpretation)
       messages.sort((a, b) => parseUTCTimestamp(a.timestamp) - parseUTCTimestamp(b.timestamp));
-      
+
       setSessionHistory(messages);
       setSelectedSession(sessionId);
     } catch (err) {
@@ -119,9 +113,9 @@ const HistoryPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const deleteSession = async (sessionId) => {
+  const deleteSession = useCallback(async (sessionId) => {
     if (!window.confirm('Are you sure you want to delete this session?')) {
       return;
     }
@@ -137,19 +131,25 @@ const HistoryPage = () => {
       setError('Failed to delete session');
       console.error('Error deleting session:', err);
     }
-  };
+  }, [selectedSession, loadSessions]);
 
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     return formatRelativeTime(dateString);
-  };
+  }, []);
 
-  const formatTime = (dateString) => {
+  const formatTime = useCallback((dateString) => {
     return formatTimeOnly(dateString);
-  };
+  }, []);
 
-  const getRelativeTime = (dateString) => {
+  const getRelativeTime = useCallback((dateString) => {
     return formatRelativeTime(dateString);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadSessions();
+    }
+  }, [user, loadSessions]);
 
   if (loading && sessions.length === 0) {
     return (
