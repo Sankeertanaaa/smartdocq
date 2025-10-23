@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { History, Trash2, Calendar, MessageCircle, Clock } from 'lucide-react';
 import { historyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { formatRelativeTime, formatTimeOnly, parseUTCTimestamp } from '../utils/timestamp';
 
 const HistoryPage = () => {
   const { user } = useAuth();
@@ -107,8 +108,8 @@ const HistoryPage = () => {
         }
       });
       
-      // Sort messages by timestamp
-      messages.sort((a, b) => new Date(a.timestamp + (a.timestamp.includes('Z') ? '' : 'Z')) - new Date(b.timestamp + (b.timestamp.includes('Z') ? '' : 'Z')));
+      // Sort messages by timestamp (ensure UTC interpretation)
+      messages.sort((a, b) => parseUTCTimestamp(a.timestamp) - parseUTCTimestamp(b.timestamp));
       
       setSessionHistory(messages);
       setSelectedSession(sessionId);
@@ -139,45 +140,15 @@ const HistoryPage = () => {
   };
 
   const formatDate = (dateString) => {
-    // Backend stores timestamps in UTC, but we want to display in user's local time
-    const date = new Date(dateString + (dateString.includes('Z') ? '' : 'Z')); // Ensure UTC interpretation
-    return date.toLocaleDateString([], {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatRelativeTime(dateString);
   };
 
   const formatTime = (dateString) => {
-    // Backend stores timestamps in UTC, but we want to display in user's local time
-    const date = new Date(dateString + (dateString.includes('Z') ? '' : 'Z')); // Ensure UTC interpretation
-    return date.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatTimeOnly(dateString);
   };
 
   const getRelativeTime = (dateString) => {
-    const date = new Date(dateString + (dateString.includes('Z') ? '' : 'Z')); // Ensure UTC interpretation
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-
-    if (diffInSeconds < 60) {
-      return 'just now';
-    } else if (diffInSeconds < 3600) {
-      const minutes = Math.floor(diffInSeconds / 60);
-      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    } else if (diffInSeconds < 86400) {
-      const hours = Math.floor(diffInSeconds / 3600);
-      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    } else if (diffInSeconds < 604800) {
-      const days = Math.floor(diffInSeconds / 86400);
-      return `${days} day${days > 1 ? 's' : ''} ago`;
-    } else {
-      return formatDate(dateString);
-    }
+    return formatRelativeTime(dateString);
   };
 
   if (loading && sessions.length === 0) {

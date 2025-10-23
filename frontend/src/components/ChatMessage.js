@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
 import { ThumbsUp, ThumbsDown, Copy, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { Card, Button, Collapse, Badge, Alert } from 'react-bootstrap';
+import { formatTimeOnly } from '../utils/timestamp';
 
 const ChatMessage = ({ message, onFeedback, onCopy }) => {
   const [showSources, setShowSources] = useState(false);
 
   const formatTime = (timestamp) => {
-    // Backend stores timestamps in UTC, but we want to display in user's local time
-    const date = new Date(timestamp + (timestamp.includes('Z') ? '' : 'Z')); // Ensure UTC interpretation
-    return date.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatTimeOnly(timestamp);
   };
 
   const getMessageClass = () => {

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { historyService } from '../services/api';
 import { useChat } from '../context/ChatContext';
+import { formatRelativeTime, parseUTCTimestamp } from '../utils/timestamp';
 
 const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
   const [sessions, setSessions] = useState([]);
@@ -95,7 +96,7 @@ const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
       });
       
       // Sort messages by timestamp (ensure UTC interpretation)
-      messages.sort((a, b) => new Date(a.timestamp + (a.timestamp.includes('Z') ? '' : 'Z')) - new Date(b.timestamp + (b.timestamp.includes('Z') ? '' : 'Z')));
+      messages.sort((a, b) => parseUTCTimestamp(a.timestamp) - parseUTCTimestamp(b.timestamp));
       
       // Notify parent component
       onSessionSelect(session, messages);
@@ -217,17 +218,7 @@ const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
   });
 
   const formatDate = (dateString) => {
-    // Backend stores timestamps in UTC, but we want to display in user's local time
-    const date = new Date(dateString + (dateString.includes('Z') ? '' : 'Z')); // Ensure UTC interpretation
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) return 'Today';
-    if (diffDays === 2) return 'Yesterday';
-    if (diffDays <= 7) return `${diffDays - 1} days ago`;
-
-    return date.toLocaleDateString();
+    return formatRelativeTime(dateString);
   };
 
   if (!isVisible) return null;
