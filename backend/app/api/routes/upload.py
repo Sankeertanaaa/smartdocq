@@ -7,6 +7,7 @@ from app.services.vector_store import VectorStore
 from app.models.schemas import UploadResponse, ErrorResponse
 from app.services.database import get_documents_collection, get_sessions_collection
 from app.api.routes.auth import get_current_user
+from app.core.config import settings
 
 router = APIRouter()
 document_processor = DocumentProcessor()
