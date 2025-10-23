@@ -70,7 +70,19 @@ class DocumentProcessor:
             print(f"❌ Error processing document {filename}: {str(e)}")
             import traceback
             traceback.print_exc()
-            raise Exception(f"Error processing document: {str(e)}")
+
+            # Provide user-friendly error messages
+            error_message = str(e)
+            if "scanned or image-based PDF" in error_message.lower():
+                raise Exception("This PDF appears to be scanned or image-based. Please use OCR tools to convert it to a text-searchable PDF, or save it as a proper PDF with selectable text.")
+            elif "no text could be extracted" in error_message.lower():
+                raise Exception("This document doesn't contain extractable text. Please ensure it's a proper text-based document (not scanned images).")
+            elif "unsupported file format" in error_message.lower():
+                raise Exception(f"File type not supported. Please upload PDF, DOCX, or TXT files only.")
+            elif "file size" in error_message.lower():
+                raise Exception(f"File too large. Maximum allowed size is {settings.MAX_FILE_SIZE // (1024*1024)}MB.")
+            else:
+                raise Exception(f"Error processing document: {error_message}")
     
     def _extract_text(self, file_path: str, filename: str) -> str:
         """Extract text from different file formats"""
@@ -97,10 +109,21 @@ class DocumentProcessor:
                     page_text = page.extract_text()
                     text += page_text + "\n"
                     print(f"Extracted {len(page_text)} characters from page {i+1}")
+
             print(f"Total PDF text extracted: {len(text)} characters")
+
+            # Check if text was actually extracted
+            if not text or len(text.strip()) < 10:
+                print(f"⚠️ Warning: Very little text extracted ({len(text)} characters)")
+                print("This might be a scanned PDF or image-based document.")
+                print("Consider using OCR tools or converting to text-searchable PDF.")
+                raise Exception("This appears to be a scanned or image-based PDF. Please use a text-searchable PDF or convert it using OCR tools first.")
+
             return text
         except Exception as e:
             print(f"Error extracting PDF text: {str(e)}")
+            if "No text could be extracted" in str(e):
+                raise Exception("This appears to be a scanned or image-based PDF. Please convert it to a text-searchable format using OCR tools or save it as a proper PDF with text content.")
             raise Exception(f"Error extracting PDF text: {str(e)}")
     
     def _extract_docx_text(self, file_path: str) -> str:

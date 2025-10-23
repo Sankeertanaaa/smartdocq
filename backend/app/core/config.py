@@ -112,7 +112,7 @@ class Settings(BaseSettings):
     UPLOAD_FOLDER: str = Field(default="./uploads", env="UPLOAD_FOLDER")
     
     # Security - Force override from environment
-    SECRET_KEY: str = Field(default="S@nk33rTaN@", env="SECRET_KEY")
+    SECRET_KEY: str = Field(default="a7K9mP2xR4yT6bN8cV0dF2gH4jL6kM8nP0", env="SECRET_KEY")
     ALGORITHM: str = Field(default="HS256", env="ALGORITHM")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=1440, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     

@@ -12,6 +12,11 @@ os.environ.setdefault("USE_FLAX", "0")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
 
+# Disable ChromaDB telemetry to prevent errors
+os.environ.setdefault("CHROMA_TELEMETRY", "0")
+os.environ.setdefault("CHROMA_ANONYMIZED_TELEMETRY", "0")
+os.environ.setdefault("ANONYMIZED_TELEMETRY", "0")
+
 class VectorStore:
     def __init__(self):
         import shutil
