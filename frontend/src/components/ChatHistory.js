@@ -225,7 +225,7 @@ const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
 
   return (
     <>
-      <div className="chat-history-sidebar bg-white border-end" style={{ width: '320px', height: '100vh', overflowY: 'auto' }}>
+      <div className="chat-history-sidebar bg-white border-end" style={{ width: '400px', height: '100vh', overflowY: 'auto' }}>
         {/* Header */}
         <div className="p-3 border-bottom">
           <div className="d-flex align-items-center justify-content-between mb-3">
@@ -307,7 +307,7 @@ const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
                         onClick={() => handleSessionClick(session)}
                       >
                         <div className="d-flex align-items-center mb-1">
-                          <h6 className="mb-0 text-truncate" style={{ maxWidth: '180px' }}>
+                          <h6 className="mb-0 text-truncate" style={{ maxWidth: '260px' }}>
                             {session.title || 'New Chat'}
                           </h6>
                           {session.is_public && (
@@ -333,7 +333,7 @@ const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
                         </div>
 
                         {session.summary && (
-                          <div className="small text-muted text-truncate" style={{ maxWidth: '220px' }}>
+                          <div className="small text-muted text-truncate" style={{ maxWidth: '300px' }}>
                             {session.summary}
                           </div>
                         )}

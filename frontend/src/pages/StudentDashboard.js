@@ -325,7 +325,7 @@ const StudentDashboard = () => {
         {/* Main Content Row */}
         <Row className="g-4">
           {/* Recent Sessions */}
-          <Col lg={8}>
+          <Col xs={12} md={12} lg={7} xl={7} xxl={7}>
             <Card className="animate-fade-in-up" style={{animationDelay: '0.7s'}}>
               <Card.Header className="bg-transparent border-bottom-0">
                 <div className="d-flex align-items-center justify-content-between">
@@ -391,7 +391,7 @@ const StudentDashboard = () => {
           </Col>
 
           {/* Quick Actions */}
-          <Col lg={4}>
+          <Col xs={12} md={12} lg={5} xl={5} xxl={5}>
             <Card className="animate-fade-in-up" style={{animationDelay: '0.8s'}}>
               <Card.Header className="bg-transparent border-bottom-0">
                 <div className="d-flex align-items-center">
