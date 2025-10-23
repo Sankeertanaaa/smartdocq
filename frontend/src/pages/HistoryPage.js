@@ -32,7 +32,7 @@ const HistoryPage = () => {
     if (user) {
       loadSessions();
     }
-  }, [user]);
+  }, [user, loadSessions]);
 
   const loadSessions = async () => {
     try {

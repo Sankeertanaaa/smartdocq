@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Eye,
   File,
-  Calendar,
   MessageSquare,
   Upload
 } from 'lucide-react';
@@ -25,7 +24,7 @@ const StudentDocuments = () => {
 
   useEffect(() => {
     fetchDocuments();
-  }, []);
+  }, [fetchDocuments]);
 
   const fetchDocuments = async () => {
     try {

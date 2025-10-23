@@ -168,11 +168,11 @@ const StudyResources = () => {
       setFilteredResources(personalizedData);
       setLoading(false);
     }, 1000);
-  }, [user]);
+  }, [user, generatePersonalizedResources]);
 
   useEffect(() => {
     filterResources();
-  }, [searchTerm, selectedCategory, resources]);
+  }, [searchTerm, selectedCategory, resources, filterResources]);
 
   const filterResources = () => {
     let filtered = resources;

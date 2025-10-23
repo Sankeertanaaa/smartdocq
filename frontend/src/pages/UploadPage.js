@@ -13,9 +13,7 @@ const UploadPage = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const { setCurrentDocument } = useChat();
-  const { user, isAuthenticated } = useAuth();
-
-  const allowedTypes = useMemo(() => ['.pdf', '.docx', '.txt'], []);
+  const { isAuthenticated } = useAuth();
   const maxSize = useMemo(() => 20 * 1024 * 1024, []); // 20MB
 
   const validateFile = useCallback((file) => {
@@ -84,7 +82,7 @@ const UploadPage = () => {
     } finally {
       setUploading(false);
     }
-  }, [setCurrentDocument, navigate, validateFile]);
+  }, [setCurrentDocument, navigate, validateFile, isAuthenticated]);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();

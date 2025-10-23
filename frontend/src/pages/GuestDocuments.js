@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   RefreshCw,
   Eye,
-  File,
   Calendar
 } from 'lucide-react';
 import { uploadService, historyService } from '../services/api';
