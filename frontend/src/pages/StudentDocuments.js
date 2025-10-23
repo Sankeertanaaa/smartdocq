@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Form, Badge, Spinner } from 'react-bootstrap';
 import { 
@@ -22,27 +22,23 @@ const StudentDocuments = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({});
 
-  useEffect(() => {
-    fetchDocuments();
-  }, [fetchDocuments]);
-
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      
+
       const userId = user?.id || user?._id;
-      
+
       if (!userId) {
         setDocuments([]);
         setStats({ totalDocuments: 0 });
         return;
       }
-      
+
       // Get documents - backend already filters by user
       const documentsData = await uploadService.listDocuments();
       const userDocuments = documentsData.documents || [];
-      
+
       setDocuments(userDocuments);
       setStats({
         totalDocuments: userDocuments.length
@@ -53,7 +49,11 @@ const StudentDocuments = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
 
   const filteredDocuments = documents.filter(doc =>
     doc.filename.toLowerCase().includes(searchTerm.toLowerCase())

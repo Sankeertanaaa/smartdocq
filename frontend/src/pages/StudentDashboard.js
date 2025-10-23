@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, ProgressBar, Spinner } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import { historyService } from '../services/api';
+import { formatRelativeTime, formatTimeOnly, parseUTCTimestamp } from '../utils/timestamp';
 import { 
   MessageSquare, 
   History, 
@@ -20,17 +21,10 @@ import {
 const StudentDashboard = () => {
   const { user, logout } = useAuth();
 
-  const formatRelativeTime = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
-    return date.toLocaleDateString();
-  };
+  const formatRelativeTimeForDashboard = useCallback((dateString) => {
+    return formatRelativeTime(dateString);
+  }, []);
+
   const [chatSessions, setChatSessions] = useState(0);
   const [documentsAccessed, setDocumentsAccessed] = useState(0);
   const [questionsAsked, setQuestionsAsked] = useState(0);
@@ -76,91 +70,91 @@ const StudentDashboard = () => {
     }
   ];
 
-  useEffect(() => {
-    const loadStats = async () => {
-      const userId = user?.id || user?._id;
-      
-      if (!userId) {
-        setLoading(false);
-        return;
-      }
+  const loadStats = useCallback(async () => {
+    const userId = user?.id || user?._id;
+
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      // Load chat sessions - try user-specific endpoint first, fallback to general
+      let sessions = [];
+
       try {
-        setLoading(true);
-        // Load chat sessions - try user-specific endpoint first, fallback to general
-        let sessions = [];
-        
+        const sessionsResp = await historyService.listUserSessions(userId);
+        sessions = sessionsResp.sessions || [];
+      } catch (userSessionError) {
+        // Fallback to general sessions and filter by user
         try {
-          const sessionsResp = await historyService.listUserSessions(userId);
-          sessions = sessionsResp.sessions || [];
-        } catch (userSessionError) {
-          // Fallback to general sessions and filter by user
-          try {
-            const allSessionsResp = await historyService.listSessions();
-            const allSessions = allSessionsResp.sessions || [];
-            // Filter sessions for current user (try both ID and email)
-            sessions = allSessions.filter(session => 
-              session.user_id === userId || 
-              session.user_id === user?.email ||
-              session.user_id === user?.id
-            );
-          } catch (generalError) {
-            console.error('Failed to load user sessions:', generalError);
-            sessions = [];
-          }
+          const allSessionsResp = await historyService.listSessions();
+          const allSessions = allSessionsResp.sessions || [];
+          // Filter sessions for current user (try both ID and email)
+          sessions = allSessions.filter(session =>
+            session.user_id === userId ||
+            session.user_id === user?.email ||
+            session.user_id === user?.id
+          );
+        } catch (generalError) {
+          console.error('Failed to load user sessions:', generalError);
+          sessions = [];
         }
-        setChatSessions(sessions.length);
-        
-        // Calculate total questions asked from all sessions
-        let totalQuestions = 0;
-        const uniqueDocuments = new Set();
-        
-        for (const session of sessions) {
-          // Count messages where message_type is 'user' (questions)
-          totalQuestions += Math.floor(session.message_count / 2) || 0; // Assuming roughly half are user messages
-          
-          // Count unique documents accessed
-          if (session.document_ids && session.document_ids.length > 0) {
-            session.document_ids.forEach(docId => uniqueDocuments.add(docId));
-          }
-        }
-        
-        setQuestionsAsked(totalQuestions);
-        setDocumentsAccessed(uniqueDocuments.size);
-        
-        // Format recent sessions for display (last 3)
-        const formattedSessions = sessions.slice(0, 3).map(session => ({
-          id: session.session_id,
-          title: session.title || 'Untitled Chat',
-          document: session.document_ids?.length > 0 ? `${session.document_ids.length} documents` : 'No documents',
-          date: formatRelativeTime(session.last_activity),
-          questions: Math.floor(session.message_count / 2) || 0
-        }));
-        setRecentSessions(formattedSessions);
-        
-      } catch (error) {
-        console.error('Error loading user stats:', error);
-        setChatSessions(0);
-        setDocumentsAccessed(0);
-        setQuestionsAsked(0);
-        setRecentSessions([]);
-      } finally {
-        setLoading(false);
       }
-    };
-    
+      setChatSessions(sessions.length);
+
+      // Calculate total questions asked from all sessions
+      let totalQuestions = 0;
+      const uniqueDocuments = new Set();
+
+      for (const session of sessions) {
+        // Count messages where message_type is 'user' (questions)
+        totalQuestions += Math.floor(session.message_count / 2) || 0; // Assuming roughly half are user messages
+
+        // Count unique documents accessed
+        if (session.document_ids && session.document_ids.length > 0) {
+          session.document_ids.forEach(docId => uniqueDocuments.add(docId));
+        }
+      }
+
+      setQuestionsAsked(totalQuestions);
+      setDocumentsAccessed(uniqueDocuments.size);
+
+      // Format recent sessions for display (last 3)
+      const formattedSessions = sessions.slice(0, 3).map(session => ({
+        id: session.session_id,
+        title: session.title || 'Untitled Chat',
+        document: session.document_ids?.length > 0 ? `${session.document_ids.length} documents` : 'No documents',
+        date: formatRelativeTimeForDashboard(session.last_activity),
+        questions: Math.floor(session.message_count / 2) || 0
+      }));
+      setRecentSessions(formattedSessions);
+
+    } catch (error) {
+      console.error('Error loading user stats:', error);
+      setChatSessions(0);
+      setDocumentsAccessed(0);
+      setQuestionsAsked(0);
+      setRecentSessions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, formatRelativeTimeForDashboard]);
+
+  useEffect(() => {
     if (user) {
       loadStats();
-      
+
       // Auto-refresh every 30 seconds to keep dashboard updated
       const interval = setInterval(() => {
         if (user) {
           loadStats();
         }
       }, 30000);
-      
+
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, loadStats]);
 
   const stats = [
     {

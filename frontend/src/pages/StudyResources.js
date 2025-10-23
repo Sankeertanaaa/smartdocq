@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, Form, InputGroup } from 'react-bootstrap';
 import { 
@@ -15,7 +15,7 @@ import {
   Users,
   Filter
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { formatRelativeTime, formatTimeOnly, parseUTCTimestamp } from '../utils/timestamp';
 
 const StudyResources = () => {
   const { user } = useAuth();
@@ -26,7 +26,7 @@ const StudyResources = () => {
   const [loading, setLoading] = useState(true);
 
   // Generate personalized study resources based on user's documents and activity
-  const generatePersonalizedResources = () => {
+  const generatePersonalizedResources = useCallback(() => {
     const baseResources = [
     {
       id: 1,
@@ -155,26 +155,11 @@ const StudyResources = () => {
     ];
 
     return [...baseResources, ...personalizedResources];
-  };
+  }, [user]);
 
   const categories = ['all', 'Personal', 'AI/ML', 'Computer Science', 'Web Development', 'Database', 'Programming', 'Academic'];
 
-  useEffect(() => {
-    // Generate personalized resources
-    setLoading(true);
-    setTimeout(() => {
-      const personalizedData = generatePersonalizedResources();
-      setResources(personalizedData);
-      setFilteredResources(personalizedData);
-      setLoading(false);
-    }, 1000);
-  }, [user, generatePersonalizedResources]);
-
-  useEffect(() => {
-    filterResources();
-  }, [searchTerm, selectedCategory, resources, filterResources]);
-
-  const filterResources = () => {
+  const filterResources = useCallback(() => {
     let filtered = resources;
 
     // Filter by category
@@ -192,7 +177,22 @@ const StudyResources = () => {
     }
 
     setFilteredResources(filtered);
-  };
+  }, [searchTerm, selectedCategory, resources]);
+
+  useEffect(() => {
+    // Generate personalized resources
+    setLoading(true);
+    setTimeout(() => {
+      const personalizedData = generatePersonalizedResources();
+      setResources(personalizedData);
+      setFilteredResources(personalizedData);
+      setLoading(false);
+    }, 1000);
+  }, [generatePersonalizedResources]);
+
+  useEffect(() => {
+    filterResources();
+  }, [filterResources]);
 
   const getTypeIcon = (type) => {
     switch (type) {
@@ -220,13 +220,9 @@ const StudyResources = () => {
     }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+  const formatDate = useCallback((dateString) => {
+    return formatRelativeTime(dateString);
+  }, []);
 
   const handleResourceAccess = (resource, event) => {
     // Show loading feedback
