@@ -44,6 +44,22 @@ const StudentDocuments = () => {
         totalDocuments: userDocuments.length,
         publicDocuments: 0 // No public documents in private system
       });
+
+      // If no documents found, try to debug what's in the database
+      if (userDocuments.length === 0) {
+        try {
+          const debugResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/debug/documents`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          const debugData = await debugResponse.json();
+          console.log('🔍 Debug info:', debugData);
+        } catch (debugError) {
+          console.log('⚠️ Debug endpoint failed:', debugError.message);
+        }
+      }
     } catch (err) {
       console.error('Error fetching documents:', err);
       setError('Failed to load documents. Please try again.');
