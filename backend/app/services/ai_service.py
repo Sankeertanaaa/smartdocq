@@ -20,7 +20,7 @@ class AIService:
             )
         )
         print("✅ Gemini AI initialized successfully")
-        
+
         # Enhanced system prompt for maximum accuracy like Gemini
         self.system_prompt = """
         You are an expert document analysis AI with the same capabilities as Google's Gemini. Your goal is to provide highly accurate, comprehensive, and insightful answers based on document content.
@@ -48,6 +48,29 @@ class AIService:
         - Consider multiple perspectives if present in the document
         - Highlight key takeaways and important implications
         """
+
+    def _extract_response_text(self, response) -> str:
+        """Extract text from Gemini API response safely"""
+        try:
+            # Try the new format first (parts-based)
+            if hasattr(response, 'parts') and response.parts:
+                return response.parts[0].text
+            elif hasattr(response, 'candidates') and response.candidates:
+                # Access through candidates structure
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                    return candidate.content.parts[0].text
+                elif hasattr(candidate, 'text'):
+                    return candidate.text
+            elif hasattr(response, 'text'):
+                # Fallback for simple text response
+                return response.text
+            else:
+                # Last resort - convert to string
+                return str(response)
+        except Exception as e:
+            print(f"❌ Error extracting response text: {str(e)}")
+            return f"Error extracting response: {str(e)}"
     
     def generate_answer(self, question: str, context_chunks: List[Dict[str, Any]], session_id: Optional[str] = None) -> Dict[str, Any]:
         """Generate answer using RAG approach"""
@@ -92,7 +115,7 @@ class AIService:
             sources = self._prepare_sources(context_chunks)
             
             return {
-                "answer": response.text,
+                "answer": self._extract_response_text(response),
                 "question_id": question_id,
                 "session_id": session_id or str(uuid.uuid4()),
                 "sources": sources,
@@ -180,12 +203,10 @@ class AIService:
             1. Relevant to the document content
             2. Build upon the current question
             3. Help explore different aspects of the topic
-            
-            Return only the questions, one per line, without numbering.
             """
             
             response = self.model.generate_content(prompt)
-            questions = [q.strip() for q in response.text.split('\n') if q.strip()]
+            questions = [q.strip() for q in self._extract_response_text(response).split('\n') if q.strip()]
             
             return questions[:3]  # Return max 3 questions
             
@@ -212,7 +233,7 @@ class AIService:
             """
             
             response = self.model.generate_content(prompt)
-            return response.text
+            return self._extract_response_text(response)
             
         except Exception as e:
             return f"Unable to generate summary due to an error: {str(e)}"
@@ -237,8 +258,9 @@ class AIService:
             """
             
             response = self.model.generate_content(prompt)
+            response_text = self._extract_response_text(response)
             points = [point.strip().lstrip('- ').lstrip('* ').lstrip('• ') 
-                     for point in response.text.split('\n') 
+                     for point in response_text.split('\n') 
                      if point.strip() and not point.strip().startswith('---')]
             
             return points[:10]  # Return max 10 key points

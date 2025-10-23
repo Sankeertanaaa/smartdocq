@@ -410,7 +410,9 @@ async def generate_session_title(session_id: str):
         """
         
         response = ai_service.model.generate_content(title_prompt)
-        generated_title = response.text.strip().strip('"').strip("'")
+        # Extract text from Gemini response safely
+        response_text = ai_service._extract_response_text(response)
+        generated_title = response_text.strip().strip('"').strip("'")
         
         # Limit title length
         if len(generated_title) > 50:
@@ -465,7 +467,8 @@ async def generate_session_summary(session_id: str):
         """
         
         response = ai_service.model.generate_content(summary_prompt)
-        generated_summary = response.text.strip()
+        # Extract text from Gemini response safely
+        generated_summary = ai_service._extract_response_text(response).strip()
         
         # Update session with generated summary
         await sessions_collection.update_one(
