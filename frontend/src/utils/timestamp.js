@@ -7,6 +7,8 @@
  * Safely convert various timestamp formats to a consistent string format
  */
 const normalizeTimestamp = (timestamp) => {
+  console.log('🔍 normalizeTimestamp received:', timestamp, 'Type:', typeof timestamp, 'Constructor:', timestamp?.constructor?.name);
+
   // Handle null, undefined, or empty values
   if (!timestamp) {
     console.warn('normalizeTimestamp: received null/undefined timestamp');
@@ -27,40 +29,115 @@ const normalizeTimestamp = (timestamp) => {
 
   // If it's a string, ensure it has timezone info
   if (typeof timestamp === 'string') {
-    // Add 'Z' if it doesn't have timezone info
-    try {
+    // Validate that it's actually a string with includes method
+    if (typeof timestamp.includes === 'function') {
       return timestamp.includes('Z') || timestamp.includes('+') || timestamp.includes('-')
         ? timestamp
         : timestamp + 'Z';
-    } catch (error) {
-      console.error('normalizeTimestamp: string.includes failed', timestamp, error);
+    } else {
+      console.warn('normalizeTimestamp: string-like object without includes method', timestamp);
       return new Date().toISOString();
     }
   }
 
-  // If it's an object with toISOString method (like MongoDB datetime), use it
-  if (timestamp && typeof timestamp === 'object' && typeof timestamp.toISOString === 'function') {
-    console.warn('normalizeTimestamp: received datetime-like object', timestamp);
-    return timestamp.toISOString();
+  // Handle React elements or other complex objects
+  if (timestamp && typeof timestamp === 'object') {
+    // Check if it's a React element (has $$typeof)
+    if (timestamp.$$typeof) {
+      console.warn('normalizeTimestamp: received React element', timestamp);
+      return new Date().toISOString();
+    }
+
+    // Check if it's a symbol
+    if (typeof timestamp === 'symbol') {
+      console.warn('normalizeTimestamp: received symbol', timestamp);
+      return new Date().toISOString();
+    }
+
+    // Check for common datetime object properties
+    if (timestamp._isAMomentObject) {
+      console.warn('normalizeTimestamp: received moment-like object', timestamp);
+      return new Date(timestamp).toISOString();
+    }
+
+    // Check for toISOString method
+    if (typeof timestamp.toISOString === 'function') {
+      console.warn('normalizeTimestamp: received datetime-like object', timestamp);
+      return timestamp.toISOString();
+    }
+
+    // Check for MongoDB $date format
+    if (timestamp.$date) {
+      console.warn('normalizeTimestamp: received MongoDB date object', timestamp);
+      return new Date(timestamp.$date).toISOString();
+    }
+
+    // Check for valueOf method (for objects that might represent dates)
+    if (typeof timestamp.valueOf === 'function') {
+      try {
+        const value = timestamp.valueOf();
+        console.warn('normalizeTimestamp: received object with valueOf', value, typeof value);
+        return new Date(value).toISOString();
+      } catch (e) {
+        console.warn('normalizeTimestamp: valueOf failed', e);
+      }
+    }
+
+    // Handle any other object by trying to convert it
+    console.warn('normalizeTimestamp: received unknown object type', typeof timestamp, timestamp);
+    try {
+      const strValue = String(timestamp);
+      console.warn('normalizeTimestamp: converted to string:', strValue);
+      return new Date(strValue).toISOString();
+    } catch (error) {
+      console.error('normalizeTimestamp: failed to convert object to date', timestamp, error);
+      return new Date().toISOString();
+    }
   }
 
-  // If it's an object with $date property (MongoDB format), use it
-  if (timestamp && typeof timestamp === 'object' && timestamp.$date) {
-    console.warn('normalizeTimestamp: received MongoDB date object', timestamp);
-    return new Date(timestamp.$date).toISOString();
+  // Handle symbols, functions, and other types
+  if (typeof timestamp === 'symbol' || typeof timestamp === 'function') {
+    console.warn('normalizeTimestamp: received symbol/function', timestamp);
+    return new Date().toISOString();
   }
 
-  // Fallback: convert to string and try to parse
+  // Fallback for any other types or edge cases
   try {
     console.warn('normalizeTimestamp: fallback conversion for', timestamp, 'typeof:', typeof timestamp);
-    const fallbackDate = new Date(timestamp);
-    if (isNaN(fallbackDate.getTime())) {
-      console.error('normalizeTimestamp: invalid date created from', timestamp);
-      return new Date().toISOString();
+    // Try multiple conversion strategies
+    let fallbackDate;
+
+    // Strategy 1: Direct Date constructor
+    try {
+      fallbackDate = new Date(timestamp);
+      if (!isNaN(fallbackDate.getTime())) {
+        return fallbackDate.toISOString();
+      }
+    } catch (e1) {
+      console.warn('normalizeTimestamp: Date constructor failed', e1);
     }
-    return fallbackDate.toISOString();
+
+    // Strategy 2: String conversion then Date
+    try {
+      const strValue = String(timestamp);
+      fallbackDate = new Date(strValue);
+      if (!isNaN(fallbackDate.getTime())) {
+        return fallbackDate.toISOString();
+      }
+    } catch (e2) {
+      console.warn('normalizeTimestamp: String conversion failed', e2);
+    }
+
+    // Strategy 3: Check if it's already a valid ISO string
+    if (typeof timestamp === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(timestamp)) {
+      console.warn('normalizeTimestamp: appears to be ISO string');
+      return timestamp;
+    }
+
+    console.error('normalizeTimestamp: all conversion strategies failed for', timestamp);
+    return new Date().toISOString();
   } catch (error) {
-    console.error('normalizeTimestamp: failed to convert', timestamp, error);
+    console.error('normalizeTimestamp: critical fallback failed', timestamp, error);
     return new Date().toISOString();
   }
 };

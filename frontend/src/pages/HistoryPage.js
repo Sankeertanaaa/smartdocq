@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { History, Trash2, Calendar, MessageCircle, Clock } from 'lucide-react';
+import { History, Trash2, Calendar, MessageCircle, Clock, Eye } from 'lucide-react';
 import { historyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { formatRelativeTime, formatTimeOnly, parseUTCTimestamp } from '../utils/timestamp';
+import { formatRelativeTime, formatTimeOnly } from '../utils/timestamp';
 
 const HistoryPage = () => {
   const { user } = useAuth();
@@ -46,15 +46,16 @@ const HistoryPage = () => {
         const response = await historyService.listUserSessions(userId);
         sessions = response.sessions || [];
       } catch (userSessionError) {
-        // Fallback to general sessions and filter by user
+        // Fallback to general sessions and filter by user or public
         try {
           const allSessionsResp = await historyService.listSessions();
           const allSessions = allSessionsResp.sessions || [];
-          // Filter sessions for current user
+          // Filter sessions for current user or public sessions
           sessions = allSessions.filter(session =>
             session.user_id === userId ||
             session.user_id === user?.email ||
-            session.user_id === user?.id
+            session.user_id === user?.id ||
+            session.is_public === true
           );
         } catch (generalError) {
           console.error('Failed to load user sessions:', generalError);
@@ -133,16 +134,8 @@ const HistoryPage = () => {
     }
   }, [selectedSession, loadSessions]);
 
-  const formatDate = useCallback((dateString) => {
-    return formatRelativeTime(dateString);
-  }, []);
-
   const formatTime = useCallback((dateString) => {
     return formatTimeOnly(dateString);
-  }, []);
-
-  const getRelativeTime = useCallback((dateString) => {
-    return formatRelativeTime(dateString);
   }, []);
 
   useEffect(() => {
@@ -212,6 +205,12 @@ const HistoryPage = () => {
                           <span className="text-sm font-medium text-gray-900 truncate">
                             {session.title || `Session ${session.session_id.slice(-8)}`}
                           </span>
+                          {session.is_public && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <Eye className="h-3 w-3 mr-1" />
+                              Public
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2 mt-1 text-xs text-gray-500">
                           <Calendar className="h-3 w-3" />

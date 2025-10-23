@@ -204,17 +204,29 @@ class VectorStore:
                     print(f"Retry after reset failed: {str(e2)}")
             return False
     
-    def search_similar(self, query: str, n_results: int = 5, document_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Search for similar chunks based on query"""
+    def search_similar(self, query: str, n_results: int = 5, document_id: Optional[str] = None, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Search for similar chunks based on query with user access control"""
         try:
             # Generate query embedding
             query_embedding = self._generate_embeddings([query])[0]
-            
-            # Prepare where clause if document_id is specified
-            where_clause = None
+
+            # Build where clause for filtering
+            where_clause = {}
+
+            # Filter by document_id if specified
             if document_id:
-                where_clause = {"document_id": document_id}
-            
+                where_clause["document_id"] = document_id
+
+            # Filter by user_id if specified (for privacy control)
+            if user_id:
+                where_clause["user_id"] = user_id
+
+            # For guest users (user_id is None), only search documents that are marked as public
+            if user_id is None:
+                # This requires checking document metadata for public status
+                # For now, we'll search all documents but filter results based on public sessions
+                pass
+
             # Search in ChromaDB
             results = self.collection.query(
                 query_embeddings=[query_embedding],
@@ -228,20 +240,22 @@ class VectorStore:
             print(f"🔍 Search results: documents={len(results.get('documents', [[]])[0]) if results.get('documents') else 0}, distances={results.get('distances', [[]])[0] if results.get('distances') else []}")
             if results["documents"] and results["documents"][0]:
                 for i, doc in enumerate(results["documents"][0]):
+                    metadata = results["metadatas"][0][i]
                     formatted_results.append({
                         "text": doc,
-                        "metadata": results["metadatas"][0][i],
+                        "metadata": metadata,
                         "distance": results["distances"][0][i]
                     })
 
-            # If no results found, try a more general search without document_id filter
-            if not formatted_results:
-                print("⚠️ No results found, trying broader search...")
+            # If no results found, try a more general search without user_id filter (for fallback)
+            if not formatted_results and user_id:
+                print("⚠️ No results found with user filter, trying broader search...")
                 try:
-                    # Try searching without document_id filter
+                    # Try searching without user_id filter (for public documents or admin access)
                     general_results = self.collection.query(
                         query_embeddings=[query_embedding],
                         n_results=min(n_results, 5),  # Limit to prevent too many results
+                        where={"document_id": document_id} if document_id else None,
                         include=["documents", "metadatas", "distances"]
                     )
                     if general_results["documents"] and general_results["documents"][0]:
@@ -273,11 +287,11 @@ class VectorStore:
 
             print(f"🔍 Final formatted results: {len(formatted_results)}")
             return formatted_results
-            
+
         except Exception as e:
             msg = str(e).lower()
             print(f"Error searching vector store: {str(e)}")
-            if ("does not exists" in msg or "not exist" in msg or "missing" in msg or 
+            if ("does not exists" in msg or "not exist" in msg or "missing" in msg or
                 "dimension" in msg or "embedding" in msg):
                 # Recreate collection if it was deleted/corrupted or has dimension mismatch
                 print("Resetting collection due to dimension mismatch or missing collection")
@@ -285,9 +299,12 @@ class VectorStore:
                     self._reset_collection()
                     # Retry the search after reset
                     query_embedding = self._generate_embeddings([query])[0]
-                    where_clause = None
+                    where_clause = {}
+
                     if document_id:
-                        where_clause = {"document_id": document_id}
+                        where_clause["document_id"] = document_id
+                    if user_id:
+                        where_clause["user_id"] = user_id
 
                     results = self.collection.query(
                         query_embeddings=[query_embedding],

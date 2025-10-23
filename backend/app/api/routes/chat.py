@@ -3,7 +3,7 @@ from app.models.schemas import ChatRequest, ChatResponse
 from app.models.mongodb_models import MessageModel, SessionModel
 from app.services.vector_store import VectorStore
 from app.services.ai_service import AIService
-from app.services.database import get_messages_collection, get_sessions_collection
+from app.services.database import get_messages_collection, get_sessions_collection, get_documents_collection
 from app.api.routes.auth import get_current_user
 from typing import Optional
 from datetime import datetime
@@ -31,35 +31,65 @@ def get_ai_service():
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_document(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     """
-    Ask a question about uploaded documents
+    Ask a question about uploaded documents (user's own documents only, or public documents)
     """
     try:
         messages_collection = get_messages_collection()
         sessions_collection = get_sessions_collection()
-        
+
         # Get user_id from authenticated user
         user_id = str(current_user["_id"])
-        
-        # Search for relevant chunks - increased for better context
+        user_role = current_user.get("role")
+
+        # For guest users, only allow public document access
+        if user_role == "guest":
+            # Check if document_id is specified and if it's public
+            if request.document_id:
+                # Get document metadata to check if it's public
+                documents_collection = get_documents_collection()
+                document = await documents_collection.find_one({"document_id": request.document_id})
+                if not document or not document.get("is_public", False):
+                    raise HTTPException(status_code=403, detail="Access denied to private document")
+            else:
+                # For guests without specific document, only search public documents
+                # Get public document IDs from MongoDB
+                documents_collection = get_documents_collection()
+                public_docs = await documents_collection.find({"is_public": True}).to_list(length=None)
+                public_doc_ids = [doc["document_id"] for doc in public_docs]
+
+                if not public_doc_ids:
+                    raise HTTPException(status_code=404, detail="No public documents available")
+
+                # For guests, search only public documents
+                similar_chunks = get_vector_store().search_similar(
+                    query=request.question,
+                    n_results=10,
+                    document_id=request.document_id,
+                    user_id=None  # This will be handled in vector store
+                )
+
+        # Search for relevant chunks - filter by user's accessible documents
         similar_chunks = get_vector_store().search_similar(
             query=request.question,
             n_results=10,  # Increased from 5 to 10 for more comprehensive context
-            document_id=request.document_id
+            document_id=request.document_id,
+            user_id=user_id if user_role != "guest" else None  # Guests can only access public docs
         )
 
-        # If no results found with specific document, search all documents
+        # If no results found with specific document, search accessible documents
         if not similar_chunks:
-            print(f"🔍 No results found for document_id {request.document_id}, searching all documents...")
+            print(f"🔍 No results found for document_id {request.document_id}, searching accessible documents...")
             similar_chunks = get_vector_store().search_similar(
                 query=request.question,
-                n_results=10  # Search all documents
+                n_results=10,  # Search accessible documents
+                user_id=user_id if user_role != "guest" else None
             )
         
         if not similar_chunks:
             answer = "I couldn't find any relevant information in the uploaded documents to answer your question. Please make sure you have uploaded a document and try asking a different question."
             sources = []
             session_id = request.session_id or "default_session"
-            timestamp = datetime.utcnow()
+            timestamp = datetime.utcnow().isoformat()
             
             # Save user message
             user_message = MessageModel(
@@ -185,19 +215,18 @@ async def chat_with_document(request: ChatRequest, current_user: dict = Depends(
                 )
             except Exception as title_error:
                 print(f"Failed to generate session title: {title_error}")
-                # Continue without title generation
-        
+
+        print(f"🤖 AI Response timestamp: {ai_response['timestamp']}, Type: {type(ai_response['timestamp'])}")
+
         return ChatResponse(
             answer=ai_response["answer"],
             sources=ai_response["sources"],
             session_id=ai_response["session_id"],
             timestamp=ai_response["timestamp"]
         )
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
-
-@router.post("/chat/follow-up")
 async def generate_follow_up_questions(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     """
     Generate follow-up questions based on current question and context

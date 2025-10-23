@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, ProgressBar, Spinner } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import { historyService } from '../services/api';
-import { formatRelativeTime, formatTimeOnly, parseUTCTimestamp } from '../utils/timestamp';
+import { formatRelativeTime } from '../utils/timestamp';
 import { 
   MessageSquare, 
   History, 

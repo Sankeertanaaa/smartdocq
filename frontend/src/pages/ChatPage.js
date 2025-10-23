@@ -72,7 +72,7 @@ const ChatPage = () => {
                 id: `user-${Date.now()}-${Math.random()}`,
                 type: 'user',
                 content: item.question,
-                timestamp: item.timestamp  // Keep as string, don't convert to Date
+                timestamp: item.timestamp || new Date().toISOString()  // Ensure timestamp is always a string
               });
             }
             if (item.answer) {
@@ -81,7 +81,7 @@ const ChatPage = () => {
                 type: 'ai',
                 content: item.answer,
                 sources: item.sources || [],
-                timestamp: item.timestamp  // Keep as string, don't convert to Date
+                timestamp: item.timestamp || new Date().toISOString()  // Ensure timestamp is always a string
               });
             }
           }
@@ -140,9 +140,10 @@ const ChatPage = () => {
         type: 'ai',
         content: response.answer,
         sources: response.sources,
-        timestamp: response.timestamp,  // Keep as string from API response
+        timestamp: response.timestamp || new Date().toISOString(),  // Ensure timestamp is always a string
         sessionId: response.session_id,
       };
+      console.log('🤖 AI Response timestamp:', response.timestamp, 'Type:', typeof response.timestamp);
       addMessage(aiMessage);
       setCurrentResponse(aiMessage);
 

@@ -41,7 +41,8 @@ const StudentDocuments = () => {
 
       setDocuments(userDocuments);
       setStats({
-        totalDocuments: userDocuments.length
+        totalDocuments: userDocuments.length,
+        publicDocuments: userDocuments.filter(doc => doc.is_public).length
       });
     } catch (err) {
       console.error('Error fetching documents:', err);
@@ -56,7 +57,9 @@ const StudentDocuments = () => {
   }, [fetchDocuments]);
 
   const filteredDocuments = documents.filter(doc =>
-    doc.filename.toLowerCase().includes(searchTerm.toLowerCase())
+    doc.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (doc.public_title && doc.public_title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (doc.public_description && doc.public_description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getFileIcon = (filename) => {
@@ -167,16 +170,16 @@ const StudentDocuments = () => {
                        style={{
                          width: '56px', 
                          height: '56px', 
-                         background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
+                         background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
                        }}>
-                    <Eye size={28} className="text-white" />
+                    <MessageSquare size={28} className="text-white" />
                   </div>
-                  <Badge bg="info" className="rounded-pill">Ready</Badge>
+                  <Badge bg="secondary" className="rounded-pill">Community</Badge>
                 </div>
                 <h3 className="display-6 fw-bold text-dark mb-2">
-                  {filteredDocuments.length}
+                  {loading ? <Spinner animation="border" size="sm" /> : (stats.publicDocuments || 0)}
                 </h3>
-                <p className="text-muted fw-semibold mb-0">Matching Search</p>
+                <p className="text-muted fw-semibold mb-0">Public Documents</p>
               </Card.Body>
             </Card>
           </Col>
@@ -319,12 +322,24 @@ const StudentDocuments = () => {
                           </div>
                         </div>
                         <div className="flex-grow-1 min-w-0">
-                          <h6 className="fw-bold text-dark mb-1 text-truncate">
-                            {document.filename}
-                          </h6>
+                          <div className="d-flex align-items-center mb-1">
+                            <h6 className="fw-bold text-dark mb-0 text-truncate">
+                              {document.public_title || document.filename}
+                            </h6>
+                            {document.is_public && (
+                              <Badge bg="success" className="ms-2 rounded-pill" style={{fontSize: '0.7rem'}}>
+                                Public
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-muted small mb-0">
-                            {getFileType(document.filename)}
+                            {document.public_description || getFileType(document.filename)}
                           </p>
+                          {!document.public_title && (
+                            <p className="text-muted small mb-0">
+                              {getFileType(document.filename)}
+                            </p>
+                          )}
                         </div>
                       </div>
                       

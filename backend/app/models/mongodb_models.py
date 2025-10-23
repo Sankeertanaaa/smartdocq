@@ -51,17 +51,16 @@ class SessionModel(BaseModel):
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
     session_id: str = Field(..., description="Unique session identifier")
     user_id: Optional[str] = Field(None, description="User ID (null for guest sessions)")
-    title: Optional[str] = Field(None, description="Session title (auto-generated from first question)")
-    is_guest: bool = Field(default=False, description="Whether this is a guest session")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
+    title: Optional[str] = Field(None, description="Session title")
     last_activity: datetime = Field(default_factory=datetime.utcnow, description="Last activity timestamp")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Session creation timestamp")
     message_count: int = Field(default=0, description="Number of messages in session")
-    document_ids: List[str] = Field(default_factory=list, description="Associated document IDs")
+    is_guest: bool = Field(default=False, description="Whether this is a guest session")
     is_archived: bool = Field(default=False, description="Whether session is archived")
     is_public: bool = Field(default=False, description="Whether session is publicly shareable")
-    tags: List[str] = Field(default_factory=list, description="User-defined tags for organization")
+    tags: List[str] = Field(default_factory=list, description="Session tags")
     summary: Optional[str] = Field(None, description="AI-generated session summary")
+    document_ids: List[str] = Field(default_factory=list, description="Document IDs used in session")
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -78,6 +77,7 @@ class MessageModel(BaseModel):
     sources: List[Dict[str, Any]] = Field(default_factory=list, description="Source documents/chunks")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Message timestamp")
     document_id: Optional[str] = Field(None, description="Associated document ID")
+    is_public: bool = Field(default=False, description="Whether message is part of a public session")
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -112,6 +112,9 @@ class DocumentModel(BaseModel):
     chunk_count: int = Field(default=0, description="Number of chunks created")
     uploaded_at: datetime = Field(default_factory=datetime.utcnow, description="Upload timestamp")
     processed_at: Optional[datetime] = Field(None, description="Processing completion timestamp")
+    is_public: bool = Field(default=False, description="Whether document is publicly shareable")
+    public_title: Optional[str] = Field(None, description="Public title for shared documents")
+    public_description: Optional[str] = Field(None, description="Public description for shared documents")
 
     model_config = ConfigDict(
         populate_by_name=True,

@@ -4,7 +4,7 @@ from datetime import datetime
 from app.services.database import get_messages_collection, get_sessions_collection
 from app.models.mongodb_models import MessageModel, SessionModel
 from app.models.schemas import ChatHistoryResponse, ChatHistoryItem
-from app.api.routes.auth import get_current_user
+from app.api.routes.auth import get_current_user, get_current_user_optional
 import json
 import os
 
@@ -25,20 +25,28 @@ async def get_chat_history(session_id: Optional[str] = None, limit: int = 50, cu
         if session_id:
             # Get history for specific session
             query = {"session_id": session_id}
-            # Regular users can only see their own sessions
+            # Regular users can only see their own sessions or public sessions
             if user_role != "admin":
-                query["user_id"] = user_id
+                query["$or"] = [{"user_id": user_id}, {"is_public": True}]
             cursor = messages_collection.find(query).sort("timestamp", -1).limit(limit)
             messages = await cursor.to_list(length=limit)
             
             # Convert to ChatHistoryItem format
             history_items = []
             for msg in messages:
+                # Ensure timestamp is properly formatted as ISO string
+                timestamp = msg["timestamp"]
+                print(f"🔍 MongoDB message timestamp: {timestamp}, Type: {type(timestamp)}")
+                if isinstance(timestamp, datetime):
+                    timestamp = timestamp.isoformat()
+                elif not isinstance(timestamp, str):
+                    timestamp = str(timestamp)
+
                 history_items.append(ChatHistoryItem(
                     session_id=msg["session_id"],
                     question=msg["content"] if msg["message_type"] == "user" else "",
                     answer=msg["content"] if msg["message_type"] == "ai" else "",
-                    timestamp=msg["timestamp"],
+                    timestamp=timestamp,
                     sources=msg.get("sources", [])
                 ))
             
@@ -52,26 +60,33 @@ async def get_chat_history(session_id: Optional[str] = None, limit: int = 50, cu
         else:
             # Get all history
             query = {}
-            # Regular users see only their own messages
+            # Regular users see only their own messages or public messages
             if user_role != "admin":
-                query["user_id"] = user_id
+                query["$or"] = [{"user_id": user_id}, {"is_public": True}]
             cursor = messages_collection.find(query).sort("timestamp", -1).limit(limit)
             messages = await cursor.to_list(length=limit)
             
             # Convert to ChatHistoryItem format
             history_items = []
             for msg in messages:
+                # Ensure timestamp is properly formatted as ISO string
+                timestamp = msg["timestamp"]
+                if isinstance(timestamp, datetime):
+                    timestamp = timestamp.isoformat()
+                elif not isinstance(timestamp, str):
+                    timestamp = str(timestamp)
+
                 history_items.append(ChatHistoryItem(
                     session_id=msg["session_id"],
                     question=msg["content"] if msg["message_type"] == "user" else "",
                     answer=msg["content"] if msg["message_type"] == "ai" else "",
-                    timestamp=msg["timestamp"],
+                    timestamp=timestamp,
                     sources=msg.get("sources", [])
                 ))
             
             # Get total count
             total_count = await messages_collection.count_documents(query)
-            
+
             return ChatHistoryResponse(
                 history=history_items,
                 total_count=total_count
@@ -81,48 +96,62 @@ async def get_chat_history(session_id: Optional[str] = None, limit: int = 50, cu
         raise HTTPException(status_code=500, detail=f"Failed to get chat history: {str(e)}")
 
 @router.post("/history")
-async def save_chat_history(chat_item: ChatHistoryItem):
+async def save_chat_history(chat_item: ChatHistoryItem, current_user: Optional[dict] = Depends(get_current_user_optional)):
     """
     Save a chat interaction to history
     """
     try:
         messages_collection = get_messages_collection()
         sessions_collection = get_sessions_collection()
-        
+
+        # Check if session is public
+        session = await sessions_collection.find_one({"session_id": chat_item.session_id})
+        is_public = session.get("is_public", False) if session else False
+
+        # Determine user_id
+        user_id = None
+        if current_user:
+            user_id = str(current_user.get("_id", current_user.get("id")))
+
         # Save user message
         user_message = MessageModel(
             session_id=chat_item.session_id,
             message_type="user",
             content=chat_item.question,
-            timestamp=chat_item.timestamp
+            timestamp=chat_item.timestamp,
+            user_id=user_id,
+            is_public=is_public
         )
         await messages_collection.insert_one(user_message.dict(by_alias=True))
-        
+
         # Save AI message
         ai_message = MessageModel(
             session_id=chat_item.session_id,
             message_type="ai",
             content=chat_item.answer,
             sources=chat_item.sources,
-            timestamp=chat_item.timestamp
+            timestamp=chat_item.timestamp,
+            user_id=user_id,
+            is_public=is_public
         )
         await messages_collection.insert_one(ai_message.dict(by_alias=True))
-        
+
         # Update session
         await sessions_collection.update_one(
             {"session_id": chat_item.session_id},
             {
                 "$set": {
                     "last_activity": chat_item.timestamp,
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.utcnow().isoformat(),
+                    "is_public": is_public
                 },
                 "$inc": {"message_count": 2}  # Increment by 2 (user + AI message)
             },
             upsert=True
         )
-        
+
         return {"message": "Chat history saved successfully"}
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save chat history: {str(e)}")
 
@@ -171,11 +200,11 @@ async def list_sessions(include_archived: bool = False, limit: int = 50, current
         
         # Build query filter
         query_filter = {}
-        
-        # Admin sees all sessions, regular users see only their own
+
+        # Admin sees all sessions, regular users see only their own or public sessions
         if user_role != "admin":
-            query_filter["user_id"] = user_id
-        
+            query_filter["$or"] = [{"user_id": user_id}, {"is_public": True}]
+
         if not include_archived:
             query_filter["is_archived"] = {"$ne": True}
         
@@ -185,8 +214,14 @@ async def list_sessions(include_archived: bool = False, limit: int = 50, current
         
         # Sort sessions manually to handle missing fields
         def get_sort_key(session):
-            return session.get("last_activity", session.get("_id", datetime.min))
-        
+            last_activity = session.get("last_activity")
+            if isinstance(last_activity, datetime):
+                return last_activity
+            elif isinstance(last_activity, str):
+                return datetime.fromisoformat(last_activity)
+            else:
+                return datetime.min
+
         sessions.sort(key=get_sort_key, reverse=True)
         
         session_list = []
@@ -207,8 +242,8 @@ async def list_sessions(include_archived: bool = False, limit: int = 50, current
             session_list.append({
                 "session_id": session["session_id"],
                 "title": session.get("title", "New Chat"),
-                "last_activity": last_activity,
-                "created_at": created_at,
+                "last_activity": last_activity.isoformat() if isinstance(last_activity, datetime) else last_activity,
+                "created_at": created_at.isoformat() if isinstance(created_at, datetime) else created_at,
                 "message_count": session.get("message_count", 0),
                 "user_id": session.get("user_id"),
                 "is_guest": session.get("is_guest", False),
@@ -242,12 +277,21 @@ async def list_user_sessions(user_id: str, current_user: dict = Depends(get_curr
         
         session_list = []
         for session in sessions:
+            # Ensure timestamps are properly formatted
+            last_activity = session.get("last_activity")
+            created_at = session.get("created_at")
+
+            if isinstance(last_activity, datetime):
+                last_activity = last_activity.isoformat()
+            if isinstance(created_at, datetime):
+                created_at = created_at.isoformat()
+
             session_list.append({
                 "session_id": session["session_id"],
-                "last_activity": session.get("last_activity", session.get("created_at", datetime.utcnow())),
+                "last_activity": last_activity,
                 "message_count": session.get("message_count", 0),
                 "title": session.get("title", "New Chat"),
-                "created_at": session.get("created_at", session.get("last_activity", datetime.utcnow())),
+                "created_at": created_at,
                 "user_id": session.get("user_id"),
                 "document_ids": session.get("document_ids", []),
                 "is_public": session.get("is_public", False)
@@ -316,7 +360,7 @@ async def update_session(session_id: str, update_data: dict):
         sessions_collection = get_sessions_collection()
         
         # Build update query
-        update_fields = {"updated_at": datetime.utcnow()}
+        update_fields = {"updated_at": datetime.utcnow().isoformat()}
         
         if "title" in update_data:
             update_fields["title"] = update_data["title"]
@@ -387,7 +431,7 @@ async def generate_session_title(session_id: str):
         # Update session with generated title
         await sessions_collection.update_one(
             {"session_id": session_id},
-            {"$set": {"title": generated_title, "updated_at": datetime.utcnow()}}
+            {"$set": {"title": generated_title, "updated_at": datetime.utcnow().isoformat()}}
         )
         
         return {"title": generated_title, "message": "Title generated successfully"}
@@ -438,7 +482,7 @@ async def generate_session_summary(session_id: str):
         # Update session with generated summary
         await sessions_collection.update_one(
             {"session_id": session_id},
-            {"$set": {"summary": generated_summary, "updated_at": datetime.utcnow()}}
+            {"$set": {"summary": generated_summary, "updated_at": datetime.utcnow().isoformat()}}
         )
         
         return {"summary": generated_summary, "message": "Summary generated successfully"}
@@ -457,12 +501,16 @@ async def search_chat_history(query: str, limit: int = 20, current_user: dict = 
         
         # Get user_id from authenticated user
         user_id = str(current_user["_id"])
+        user_role = current_user.get("role")
         
-        # Build search filter - always filter by user_id
+        # Build search filter - always filter by user_id or public sessions
         search_filter = {
-            "$text": {"$search": query},
-            "user_id": user_id
+            "$text": {"$search": query}
         }
+
+        # Regular users can only search their own sessions or public sessions
+        if user_role != "admin":
+            search_filter["$or"] = [{"user_id": user_id}, {"is_public": True}]
         
         # Search messages
         cursor = messages_collection.find(
@@ -486,7 +534,7 @@ async def search_chat_history(query: str, limit: int = 20, current_user: dict = 
             session_results[session_id]["messages"].append({
                 "content": msg["content"],
                 "message_type": msg["message_type"],
-                "timestamp": msg["timestamp"],
+                "timestamp": msg["timestamp"],  # MongoDB should return this as string, but ensure it is
                 "score": msg.get("score", 0)
             })
             session_results[session_id]["score"] += msg.get("score", 0)
@@ -504,7 +552,7 @@ async def search_chat_history(query: str, limit: int = 20, current_user: dict = 
                 results.append({
                     "session_id": session_id,
                     "title": session.get("title", "New Chat"),
-                    "last_activity": session["last_activity"],
+                    "last_activity": session.get("last_activity"),
                     "messages": session_results[session_id]["messages"],
                     "relevance_score": session_results[session_id]["score"]
                 })
@@ -527,7 +575,7 @@ async def archive_session(session_id: str):
         
         result = await sessions_collection.update_one(
             {"session_id": session_id},
-            {"$set": {"is_archived": True, "updated_at": datetime.utcnow()}}
+            {"$set": {"is_archived": True, "updated_at": datetime.utcnow().isoformat()}}
         )
         
         if result.matched_count > 0:
@@ -548,7 +596,7 @@ async def unarchive_session(session_id: str):
         
         result = await sessions_collection.update_one(
             {"session_id": session_id},
-            {"$set": {"is_archived": False, "updated_at": datetime.utcnow()}}
+            {"$set": {"is_archived": False, "updated_at": datetime.utcnow().isoformat()}}
         )
         
         if result.matched_count > 0:
@@ -584,10 +632,17 @@ async def get_shared_session(session_id: str):
         # Format messages
         formatted_messages = []
         for msg in messages:
+            # Ensure timestamp is properly formatted as ISO string
+            timestamp = msg["timestamp"]
+            if isinstance(timestamp, datetime):
+                timestamp = timestamp.isoformat()
+            elif not isinstance(timestamp, str):
+                timestamp = str(timestamp)
+
             formatted_messages.append({
                 "type": msg["message_type"],
                 "content": msg["content"],
-                "timestamp": msg["timestamp"],
+                "timestamp": timestamp,
                 "sources": msg.get("sources", [])
             })
         

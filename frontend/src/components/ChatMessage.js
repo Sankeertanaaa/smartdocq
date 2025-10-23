@@ -7,7 +7,10 @@ const ChatMessage = ({ message, onFeedback, onCopy }) => {
   const [showSources, setShowSources] = useState(false);
 
   const formatTime = (timestamp) => {
-    return formatTimeOnly(timestamp);
+    console.log('📱 ChatMessage formatTime received:', timestamp, 'Type:', typeof timestamp);
+    // Ensure timestamp is a string before passing to utility
+    const safeTimestamp = typeof timestamp === 'string' ? timestamp : String(timestamp || new Date().toISOString());
+    return formatTimeOnly(safeTimestamp);
   };
 
   const getMessageClass = () => {
@@ -151,7 +154,10 @@ const ChatMessage = ({ message, onFeedback, onCopy }) => {
              message.type === 'ai' ? 'AI Assistant' : 'System'}
           </Badge>
           <small className="text-muted">
-            {formatTime(message.timestamp)}
+            {(() => {
+              console.log('📱 ChatMessage rendering timestamp:', message.timestamp, 'Type:', typeof message.timestamp);
+              return formatTime(message.timestamp);
+            })()}
           </small>
         </div>
         

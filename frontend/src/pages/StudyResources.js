@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Badge, Form, InputGroup } from 'react-bootstrap';
+import { formatRelativeTime } from '../utils/timestamp';
 import { 
   BookOpen, 
   Search,
@@ -15,7 +15,7 @@ import {
   Users,
   Filter
 } from 'lucide-react';
-import { formatRelativeTime, formatTimeOnly, parseUTCTimestamp } from '../utils/timestamp';
+import { useAuth } from '../context/AuthContext';
 
 const StudyResources = () => {
   const { user } = useAuth();

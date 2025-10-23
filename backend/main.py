@@ -20,6 +20,9 @@ class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime):
             return obj.isoformat()
+        # Handle other datetime-like objects
+        if hasattr(obj, 'isoformat') and callable(obj.isoformat):
+            return obj.isoformat()
         return super().default(obj)
 
 # Override the default JSON response to use our custom encoder
@@ -31,6 +34,9 @@ original_jsonable_encoder = fastapi.encoders.jsonable_encoder
 
 def custom_jsonable_encoder(obj, **kwargs):
     if isinstance(obj, datetime):
+        return obj.isoformat()
+    # Handle other datetime-like objects
+    if hasattr(obj, 'isoformat') and callable(obj.isoformat):
         return obj.isoformat()
     return original_jsonable_encoder(obj, **kwargs)
 
