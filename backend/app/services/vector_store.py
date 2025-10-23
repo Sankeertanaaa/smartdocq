@@ -38,6 +38,8 @@ class VectorStore:
                 time.sleep(0.5)
                 os.makedirs(settings.CHROMA_PERSIST_DIRECTORY, exist_ok=True)
                 print("✅ Created fresh ChromaDB directory for TF-IDF")
+                # Reset TF-IDF vectorizer as well
+                self._tfidf_vectorizer = None
             except sqlite3.OperationalError as db_error:
                 if "no such column" in str(db_error).lower() or "topic" in str(db_error).lower():
                     print(f"⚠️  Detected corrupted ChromaDB database: {str(db_error)}")
@@ -49,6 +51,8 @@ class VectorStore:
                         time.sleep(0.5)  # Brief pause
                         os.makedirs(settings.CHROMA_PERSIST_DIRECTORY, exist_ok=True)
                         print("✅ Created fresh ChromaDB directory")
+                        # Reset TF-IDF vectorizer as well
+                        self._tfidf_vectorizer = None
                     except Exception as cleanup_error:
                         print(f"❌ Failed to cleanup: {str(cleanup_error)}")
                 else:
@@ -95,6 +99,8 @@ class VectorStore:
                             # Recreate the directory
                             os.makedirs(settings.CHROMA_PERSIST_DIRECTORY, exist_ok=True)
                             print("✅ ChromaDB directory reset, retrying...")
+                            # Reset TF-IDF vectorizer as well
+                            self._tfidf_vectorizer = None
                             continue  # Retry initialization
                         except Exception as reset_error:
                             print(f"❌ Failed to reset ChromaDB directory: {str(reset_error)}")
@@ -108,6 +114,8 @@ class VectorStore:
         
         # Removed SentenceTransformer initialization since we're using TF-IDF
         self._st_model = None
+        # TF-IDF vectorizer instance variable
+        self._tfidf_vectorizer = None
     
     def _reset_collection(self):
         try:
@@ -118,6 +126,9 @@ class VectorStore:
             name="smartdoc_chunks",
             metadata={"hnsw:space": "cosine"}
         )
+        # Also reset the TF-IDF vectorizer to maintain consistency
+        self._tfidf_vectorizer = None
+        print("🔄 Reset TF-IDF vectorizer")
 
     def add_documents(self, chunks: List[Dict[str, Any]]) -> bool:
         """Add document chunks to vector store with batch processing"""
@@ -223,16 +234,44 @@ class VectorStore:
                         "distance": results["distances"][0][i]
                     })
 
-            # Always return at least one result if available, even with low similarity
-            if not formatted_results and results["documents"] and results["documents"][0]:
-                print("⚠️ No high-similarity results, but found documents - returning best match")
-                formatted_results.append({
-                    "text": results["documents"][0][0],
-                    "metadata": results["metadatas"][0][0],
-                    "distance": results["distances"][0][0]
-                })
+            # If no results found, try a more general search without document_id filter
+            if not formatted_results:
+                print("⚠️ No results found, trying broader search...")
+                try:
+                    # Try searching without document_id filter
+                    general_results = self.collection.query(
+                        query_embeddings=[query_embedding],
+                        n_results=min(n_results, 5),  # Limit to prevent too many results
+                        include=["documents", "metadatas", "distances"]
+                    )
+                    if general_results["documents"] and general_results["documents"][0]:
+                        for i, doc in enumerate(general_results["documents"][0]):
+                            formatted_results.append({
+                                "text": doc,
+                                "metadata": general_results["metadatas"][0][i],
+                                "distance": general_results["distances"][0][i]
+                            })
+                        print(f"✅ Found {len(formatted_results)} results from broader search")
+                except Exception as e:
+                    print(f"⚠️ Broader search failed: {str(e)}")
 
-            print(f"🔍 Formatted {len(formatted_results)} results from search")
+            # If still no results, return at least one document if any exist in the collection
+            if not formatted_results:
+                print("⚠️ No search results, checking if any documents exist...")
+                try:
+                    # Get any document from the collection as fallback
+                    all_docs = self.collection.get(include=["documents", "metadatas"], limit=1)
+                    if all_docs["documents"] and all_docs["documents"][0]:
+                        formatted_results.append({
+                            "text": all_docs["documents"][0],
+                            "metadata": all_docs["metadatas"][0],
+                            "distance": 0.5  # Medium similarity as fallback
+                        })
+                        print("✅ Using fallback document for context")
+                except Exception as e:
+                    print(f"⚠️ Fallback document retrieval failed: {str(e)}")
+
+            print(f"🔍 Final formatted results: {len(formatted_results)}")
             return formatted_results
             
         except Exception as e:
@@ -301,11 +340,17 @@ class VectorStore:
             from sklearn.feature_extraction.text import TfidfVectorizer
             import numpy as np
 
-            # Create TF-IDF vectorizer (384 dimensions)
-            vectorizer = TfidfVectorizer(max_features=384, stop_words='english')
+            # If vectorizer doesn't exist, create and fit it with the provided texts
+            if self._tfidf_vectorizer is None:
+                print("🔧 Creating and fitting new TF-IDF vectorizer...")
+                # Create TF-IDF vectorizer (384 dimensions max, but will use actual vocab size)
+                self._tfidf_vectorizer = TfidfVectorizer(max_features=384, stop_words='english')
+                tfidf_matrix = self._tfidf_vectorizer.fit_transform(texts)
+            else:
+                # Use existing fitted vectorizer to transform texts
+                print("🔧 Using existing TF-IDF vectorizer...")
+                tfidf_matrix = self._tfidf_vectorizer.transform(texts)
 
-            # Generate embeddings
-            tfidf_matrix = vectorizer.fit_transform(texts)
             embeddings = tfidf_matrix.toarray()
 
             # Normalize
@@ -319,20 +364,26 @@ class VectorStore:
             # Validate the result format
             if not isinstance(result, list):
                 print(f"❌ Invalid embedding format: {type(result)}")
-                result = [[0.0] * 384 for _ in texts]
+                # Use the vectorizer's vocabulary size as dimension
+                vocab_size = len(self._tfidf_vectorizer.get_feature_names_out()) if self._tfidf_vectorizer else 384
+                result = [[0.0] * vocab_size for _ in texts]
             elif len(result) > 0 and not isinstance(result[0], list):
                 print(f"❌ Invalid embedding structure: {type(result[0])}")
-                result = [[0.0] * 384 for _ in texts]
+                # Use the vectorizer's vocabulary size as dimension
+                vocab_size = len(self._tfidf_vectorizer.get_feature_names_out()) if self._tfidf_vectorizer else 384
+                result = [[0.0] * vocab_size for _ in texts]
 
-            print(f"✅ Generated {len(result)} TF-IDF embeddings with shape: {len(result[0]) if result else 0}")
+            vocab_size = len(self._tfidf_vectorizer.get_feature_names_out()) if self._tfidf_vectorizer else 384
+            print(f"✅ Generated {len(result)} TF-IDF embeddings with shape: {vocab_size}")
             return result
         except Exception as e:
             print(f"❌ TF-IDF embedding failed: {str(e)}")
             import traceback
             traceback.print_exc()
-            # Fallback to zero embeddings
-            print("⚠️ Using zero embeddings as fallback")
-            return [[0.0] * 384 for _ in texts]
+            # Fallback to zero embeddings with correct vocabulary size
+            vocab_size = len(self._tfidf_vectorizer.get_feature_names_out()) if self._tfidf_vectorizer else 384
+            print(f"⚠️ Using zero embeddings as fallback with dimension: {vocab_size}")
+            return [[0.0] * vocab_size for _ in texts]
     
     def get_collection_stats(self) -> Dict[str, Any]:
         """Get statistics about the vector store"""
@@ -345,6 +396,31 @@ class VectorStore:
         except Exception as e:
             print(f"Error getting collection stats: {str(e)}")
             return {"total_chunks": 0, "collection_name": "unknown"} 
+
+    def get_document_chunks(self, document_id: str) -> List[Dict[str, Any]]:
+        """Get all chunks for a specific document"""
+        try:
+            # Query for all chunks of the document
+            results = self.collection.get(
+                where={"document_id": document_id},
+                include=["documents", "metadatas"]
+            )
+
+            formatted_chunks = []
+            if results["documents"]:
+                for i, doc in enumerate(results["documents"]):
+                    formatted_chunks.append({
+                        "text": doc,
+                        "metadata": results["metadatas"][i],
+                        "distance": 0.0  # Not a similarity search, so distance is 0
+                    })
+
+            print(f"🔍 Retrieved {len(formatted_chunks)} chunks for document {document_id}")
+            return formatted_chunks
+
+        except Exception as e:
+            print(f"Error getting document chunks: {str(e)}")
+            return []
 
     def list_documents(self) -> List[Dict[str, Any]]:
         """List distinct documents with chunk counts and filenames."""

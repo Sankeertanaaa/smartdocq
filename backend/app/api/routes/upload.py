@@ -13,16 +13,9 @@ import uuid
 
 router = APIRouter()
 document_processor = DocumentProcessor()
-_vector_store = None  # Lazy initialization
+# Import the shared VectorStore instance from chat module
+from app.api.routes.chat import get_vector_store
 security = HTTPBearer(auto_error=False)
-
-def get_vector_store():
-    """Lazy initialization of VectorStore to avoid blocking app startup"""
-    global _vector_store
-    if _vector_store is None:
-        print("🔧 Initializing VectorStore (lazy)...")
-        _vector_store = VectorStore()
-    return _vector_store
 
 @router.get("/test")
 async def test_endpoint():

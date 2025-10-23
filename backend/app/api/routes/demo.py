@@ -8,9 +8,12 @@ from app.services.vector_store import VectorStore
 from app.services.ai_service import AIService
 from app.services.document_processor import DocumentProcessor
 from app.core.config import settings
+# Import the shared VectorStore instance from chat module
+from app.api.routes.chat import get_vector_store
 
 router = APIRouter()
-vector_store = VectorStore()
+# Use the shared VectorStore instance instead of creating a new one
+vector_store = get_vector_store()
 ai_service = AIService()
 document_processor = DocumentProcessor()
 
