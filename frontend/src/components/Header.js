@@ -59,9 +59,12 @@ const Header = () => {
           >
             <FileText size={24} className="text-white" />
           </div>
-          <div>
+          <div className="d-none d-sm-block">
             <h5 className="mb-0 fw-bold text-dark">SmartDocQ</h5>
-            <small className="text-muted">AI Document Assistant</small>
+            <small className="text-muted d-block">AI Document Assistant</small>
+          </div>
+          <div className="d-sm-none">
+            <h6 className="mb-0 fw-bold text-dark">SmartDocQ</h6>
           </div>
         </Navbar.Brand>
 
@@ -90,7 +93,8 @@ const Header = () => {
                     }}
                   >
                     <Icon size={18} className="me-2" />
-                    <span className="d-none d-md-inline">{item.label}</span>
+                    <span className="d-none d-sm-inline">{item.label}</span>
+                    <span className="d-sm-none">{item.label.charAt(0)}</span>
                   </Nav.Link>
                 );
               })}
@@ -112,7 +116,8 @@ const Header = () => {
                           {user?.fullName?.charAt(0) || 'U'}
                         </span>
                       </div>
-                      <span className="d-none d-lg-inline">{user?.fullName || 'User'}</span>
+                      <span className="d-none d-md-inline">{user?.fullName || 'User'}</span>
+                      <span className="d-md-none">{user?.fullName?.split(' ')[0] || 'User'}</span>
                     </div>
                   }
                   id="user-dropdown"

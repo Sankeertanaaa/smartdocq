@@ -260,7 +260,7 @@ const ChatPage = () => {
       
       {/* Main Chat Area */}
       <div className="flex-grow-1">
-        <Container fluid className="py-4">
+        <Container fluid className="py-4 chat-container">
         {/* Document Info Header */}
         <Row className="mb-4">
           <Col>
@@ -268,16 +268,16 @@ const ChatPage = () => {
               <Card.Body className="p-4">
                 <Row className="align-items-center">
                   <Col xs="auto">
-                    <div className="bg-primary rounded-xl d-flex align-items-center justify-content-center" 
+                    <div className="bg-primary rounded-xl d-flex align-items-center justify-content-center"
                          style={{width: '56px', height: '56px'}}>
                       <FileText size={28} className="text-white" />
                     </div>
                   </Col>
-                  <Col>
+                  <Col className="flex-grow-1">
                     <h5 className="fw-bold text-dark mb-1">
                       {sessionTitle || currentDocument?.name || 'Chat Session'}
                     </h5>
-                    <p className="text-muted mb-0">
+                    <p className="text-muted mb-0 small">
                       {currentDocument ? (
                         `${currentDocument.name} • ${(currentDocument.size / 1024 / 1024).toFixed(2)} MB • Ready for questions`
                       ) : (
@@ -287,17 +287,20 @@ const ChatPage = () => {
                   </Col>
                   <Col xs="auto">
                     <div className="d-flex align-items-center gap-2">
-                      <Badge bg="success" className="rounded-pill">
+                      <Badge bg="success" className="rounded-pill d-none d-md-flex align-items-center">
                         <div className="bg-white rounded-circle me-1" style={{width: '6px', height: '6px'}}></div>
                         Active
                       </Badge>
-                      <Button variant="outline-secondary" size="sm" onClick={() => setShowHistory(true)}>
+                      <Button variant="outline-secondary" size="sm" onClick={() => setShowHistory(true)} className="d-none d-md-flex align-items-center">
                         <History size={16} className="me-1" />
                         History
                       </Button>
+                      <Button variant="outline-secondary" size="sm" onClick={() => setShowHistory(true)} className="d-md-none">
+                        <History size={16} />
+                      </Button>
                       <Button variant="outline-secondary" size="sm" onClick={clearChat}>
                         <RefreshCw size={16} className="me-1" />
-                        New Chat
+                        <span className="d-none d-sm-inline">New</span>
                       </Button>
                     </div>
                   </Col>
@@ -348,7 +351,7 @@ const ChatPage = () => {
                 <div className="flex-grow-1 overflow-auto p-4" style={{maxHeight: '500px'}}>
                   {messages.length === 0 ? (
                     <div className="text-center py-5">
-                      <div className="bg-primary bg-opacity-10 rounded-xl d-flex align-items-center justify-content-center mx-auto mb-4" 
+                      <div className="bg-primary bg-opacity-10 rounded-xl d-flex align-items-center justify-content-center mx-auto mb-4"
                            style={{width: '100px', height: '100px'}}>
                         <MessageCircle size={48} className="text-primary" />
                       </div>
@@ -357,9 +360,16 @@ const ChatPage = () => {
                         Ask anything about your uploaded document and get AI-powered answers.
                       </p>
                       <div className="mt-4">
-                        <Badge bg="primary" className="me-2 mb-2">Try: "What is this document about?"</Badge>
-                        <Badge bg="info" className="me-2 mb-2">Try: "Summarize the key points"</Badge>
-                        <Badge bg="success" className="mb-2">Try: "What are the main topics?"</Badge>
+                        <Badge bg="primary" className="me-2 mb-2 d-none d-md-inline">Try: "What is this document about?"</Badge>
+                        <Badge bg="info" className="me-2 mb-2 d-none d-md-inline">Try: "Summarize the key points"</Badge>
+                        <Badge bg="success" className="mb-2 d-none d-md-inline">Try: "What are the main topics?"</Badge>
+                        <div className="d-md-none">
+                          <Badge bg="primary" className="mb-1">Try: "What is this document about?"</Badge>
+                          <br />
+                          <Badge bg="info" className="mb-1">Try: "Summarize the key points"</Badge>
+                          <br />
+                          <Badge bg="success">Try: "What are the main topics?"</Badge>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -377,8 +387,8 @@ const ChatPage = () => {
                         </div>
                       ))}
                       {isLoading && (
-                        <div className="d-flex align-items-center p-4 bg-light rounded-xl mb-3 animate-fade-in-up">
-                          <div className="bg-primary rounded-xl d-flex align-items-center justify-content-center me-3" 
+                        <div className="d-flex align-items-center p-4 bg-light rounded-xl mb-3 animate-fade-in-up chat-message">
+                          <div className="bg-primary rounded-xl d-flex align-items-center justify-content-center me-3"
                                style={{width: '40px', height: '40px'}}>
                             <Bot size={20} className="text-white" />
                           </div>
@@ -403,11 +413,11 @@ const ChatPage = () => {
         {/* Input Form */}
         <Row>
           <Col>
-            <Card className="glass shadow-soft animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+            <Card className="glass shadow-soft animate-fade-in-up chat-input" style={{animationDelay: '0.2s'}}>
               <Card.Body className="p-4">
                 <Form onSubmit={handleSubmit}>
                   <Row className="align-items-end">
-                    <Col>
+                    <Col className="flex-grow-1">
                       <Form.Group>
                         <Form.Control
                           type="text"
@@ -423,7 +433,7 @@ const ChatPage = () => {
                           }}
                         />
                       </Form.Group>
-                      <Form.Text className="text-muted">
+                      <Form.Text className="text-muted small">
                         Press Enter to send, or click the send button
                       </Form.Text>
                     </Col>
@@ -433,7 +443,7 @@ const ChatPage = () => {
                         disabled={!inputValue.trim() || isLoading}
                         variant="primary"
                         size="lg"
-                        className="px-4"
+                        className="px-4 touch-target"
                       >
                         {isLoading ? (
                           <Spinner animation="border" size="sm" />

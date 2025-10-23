@@ -188,28 +188,28 @@ const StudentDashboard = () => {
   return (
     <div className="min-vh-100 bg-pattern">
       {/* Professional Header */}
-      <nav className="navbar navbar-expand-lg glass shadow-soft">
+      <nav className="navbar navbar-expand-lg glass shadow-soft mobile-header">
         <Container fluid>
-          <div className="d-flex align-items-center">
-            <div className="d-flex align-items-center me-4">
+          <div className="d-flex align-items-center flex-grow-1">
+            <div className="d-flex align-items-center me-4 flex-grow-1">
               <div className="bg-primary rounded-xl d-flex align-items-center justify-content-center me-3" 
                    style={{width: '48px', height: '48px'}}>
                 <Brain size={24} className="text-white" />
               </div>
-              <div>
+              <div className="flex-grow-1">
                 <h4 className="mb-0 fw-bold text-gradient">Student Dashboard</h4>
-                <small className="text-muted">Learning & Research</small>
+                <small className="text-muted d-none d-md-block">Learning & Research</small>
               </div>
             </div>
           </div>
           
-          <div className="d-flex align-items-center">
+          <div className="d-flex align-items-center gap-2">
             <div className="d-flex align-items-center bg-primary rounded-xl px-3 py-2 me-3">
               <div className="bg-white bg-opacity-20 rounded-circle d-flex align-items-center justify-content-center me-2" 
                    style={{width: '32px', height: '32px'}}>
                 <span className="text-white fw-bold">{user?.fullName?.charAt(0) || 'S'}</span>
               </div>
-              <div>
+              <div className="d-none d-sm-block">
                 <div className="text-white fw-semibold small">{user?.fullName || 'Student'}</div>
                 <div className="text-white-50 small">Student</div>
               </div>
@@ -221,7 +221,7 @@ const StudentDashboard = () => {
               className="d-flex align-items-center"
             >
               <LogOut size={18} className="me-2" />
-              Logout
+              <span className="d-none d-sm-inline">Logout</span>
             </Button>
           </div>
         </Container>
@@ -232,11 +232,12 @@ const StudentDashboard = () => {
         {/* Welcome Section */}
         <Row className="mb-5">
           <Col>
-            <div className="text-center animate-fade-in-down">
+            <div className="text-center animate-fade-in-down mobile-container">
               <h1 className="display-5 fw-bold text-gradient mb-3">
-                Welcome back, {user?.fullName || 'Student'}
+                Welcome back, <span className="d-none d-sm-inline">{user?.fullName || 'Student'}</span>
+                <span className="d-sm-none">{user?.fullName?.split(' ')[0] || 'Student'}</span>
               </h1>
-              <p className="lead text-muted">
+              <p className="lead text-muted mb-4">
                 Continue your learning journey with AI-powered document analysis
               </p>
             </div>
@@ -244,24 +245,24 @@ const StudentDashboard = () => {
         </Row>
 
         {/* Statistics Cards */}
-        <Row className="g-4 mb-5">
+        <Row className="g-4 mb-5 dashboard-stats">
           {stats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (
               <Col xs={12} sm={6} lg={4} key={index}>
-                <Card className="h-100 hover-lift animate-fade-in-up" 
+                <Card className="h-100 hover-lift animate-fade-in-up mobile-card"
                       style={{animationDelay: `${index * 0.1}s`}}>
                   <Card.Body className="p-4">
                     <div className="d-flex align-items-center justify-content-between mb-3">
-                      <div className="rounded-xl d-flex align-items-center justify-content-center" 
+                      <div className="rounded-xl d-flex align-items-center justify-content-center"
                            style={{
-                             width: '56px', 
-                             height: '56px', 
+                             width: '56px',
+                             height: '56px',
                              background: stat.gradient
                            }}>
                         <IconComponent size={28} className="text-white" />
                       </div>
-                      <Badge bg={stat.color} className="rounded-pill">
+                      <Badge bg={stat.color} className="rounded-pill d-none d-md-flex align-items-center">
                         <TrendingUp size={12} className="me-1" />
                         +15%
                       </Badge>
@@ -270,10 +271,10 @@ const StudentDashboard = () => {
                       {loading ? <Spinner animation="border" size="sm" /> : stat.value}
                     </h3>
                     <p className="text-muted fw-semibold mb-3">{stat.title}</p>
-                    <ProgressBar 
-                      now={stat.progress} 
+                    <ProgressBar
+                      now={stat.progress}
                       variant={stat.color}
-                      className="rounded-pill" 
+                      className="rounded-pill"
                       style={{height: '8px'}}
                     />
                   </Card.Body>
@@ -289,28 +290,28 @@ const StudentDashboard = () => {
             const IconComponent = feature.icon;
             return (
               <Col xs={12} sm={6} lg={3} key={index}>
-                <Card 
-                  as={Link} 
+                <Card
+                  as={Link}
                   to={feature.link}
-                  className="h-100 text-decoration-none text-dark hover-lift animate-fade-in-up"
+                  className="h-100 text-decoration-none text-dark hover-lift animate-fade-in-up mobile-card"
                   style={{animationDelay: `${(index + 3) * 0.1}s`}}
                 >
                   <Card.Body className="p-4 text-center">
-                    <div className="rounded-xl d-flex align-items-center justify-content-center mx-auto mb-4" 
+                    <div className="rounded-xl d-flex align-items-center justify-content-center mx-auto mb-4"
                          style={{
-                           width: '80px', 
-                           height: '80px', 
+                           width: '80px',
+                           height: '80px',
                            background: feature.gradient
                          }}>
                       <IconComponent size={40} className="text-white" />
                     </div>
                     <h5 className="fw-bold text-dark mb-3">{feature.title}</h5>
-                    <p className="text-muted mb-4">{feature.description}</p>
+                    <p className="text-muted mb-4 small">{feature.description}</p>
                     <div className="d-flex justify-content-center">
-                      <div className="rounded-pill" 
+                      <div className="rounded-pill"
                            style={{
-                             width: '40px', 
-                             height: '4px', 
+                             width: '40px',
+                             height: '4px',
                              background: feature.gradient
                            }}></div>
                     </div>
@@ -329,7 +330,7 @@ const StudentDashboard = () => {
               <Card.Header className="bg-transparent border-bottom-0">
                 <div className="d-flex align-items-center justify-content-between">
                   <div className="d-flex align-items-center">
-                    <div className="bg-primary rounded-xl d-flex align-items-center justify-content-center me-3" 
+                    <div className="bg-primary rounded-xl d-flex align-items-center justify-content-center me-3"
                          style={{width: '48px', height: '48px'}}>
                       <History size={24} className="text-white" />
                     </div>
@@ -346,9 +347,9 @@ const StudentDashboard = () => {
               <Card.Body className="p-4">
                 <div className="space-y-3">
                   {recentSessions.length > 0 ? recentSessions.map((session, index) => (
-                    <div key={session.id} 
+                    <div key={session.id}
                          className="d-flex align-items-center p-3 border rounded-xl bg-light bg-opacity-50 mb-3 hover-lift">
-                      <div className="bg-primary rounded-circle me-3" 
+                      <div className="bg-primary rounded-circle me-3"
                            style={{width: '12px', height: '12px'}}></div>
                       <div className="flex-grow-1">
                         <h6 className="fw-bold text-dark mb-1">{session.title}</h6>
@@ -363,10 +364,10 @@ const StudentDashboard = () => {
                           </small>
                         </div>
                       </div>
-                      <Button 
-                        as={Link} 
+                      <Button
+                        as={Link}
                         to={`/chat?session=${session.id}`}
-                        variant="primary" 
+                        variant="primary"
                         size="sm"
                         className="d-flex align-items-center"
                       >
@@ -394,7 +395,7 @@ const StudentDashboard = () => {
             <Card className="animate-fade-in-up" style={{animationDelay: '0.8s'}}>
               <Card.Header className="bg-transparent border-bottom-0">
                 <div className="d-flex align-items-center">
-                  <div className="bg-success rounded-xl d-flex align-items-center justify-content-center me-3" 
+                  <div className="bg-success rounded-xl d-flex align-items-center justify-content-center me-3"
                        style={{width: '48px', height: '48px'}}>
                     <MessageSquare size={24} className="text-white" />
                   </div>
@@ -406,11 +407,11 @@ const StudentDashboard = () => {
               </Card.Header>
               <Card.Body className="p-4">
                 <div className="space-y-3">
-                  <Button 
-                    as={Link} 
+                  <Button
+                    as={Link}
                     to="/upload"
-                    variant="primary" 
-                    className="w-100 d-flex align-items-center justify-content-between p-3"
+                    variant="primary"
+                    className="w-100 d-flex align-items-center justify-content-between p-3 mobile-btn"
                   >
                     <div className="d-flex align-items-center">
                       <Upload size={20} className="me-3" />
@@ -421,12 +422,12 @@ const StudentDashboard = () => {
                     </div>
                     <ArrowRight size={16} />
                   </Button>
-                  
-                  <Button 
-                    as={Link} 
+
+                  <Button
+                    as={Link}
                     to="/chat"
-                    variant="outline-primary" 
-                    className="w-100 d-flex align-items-center justify-content-between p-3"
+                    variant="outline-primary"
+                    className="w-100 d-flex align-items-center justify-content-between p-3 mobile-btn"
                   >
                     <div className="d-flex align-items-center">
                       <MessageSquare size={20} className="me-3" />
@@ -437,12 +438,12 @@ const StudentDashboard = () => {
                     </div>
                     <ArrowRight size={16} />
                   </Button>
-                  
-                  <Button 
-                    as={Link} 
+
+                  <Button
+                    as={Link}
                     to="/history"
-                    variant="outline-secondary" 
-                    className="w-100 d-flex align-items-center justify-content-between p-3"
+                    variant="outline-secondary"
+                    className="w-100 d-flex align-items-center justify-content-between p-3 mobile-btn"
                   >
                     <div className="d-flex align-items-center">
                       <History size={20} className="me-3" />

@@ -526,13 +526,58 @@
     .mobile-padding {
       @apply px-4 py-2;
     }
-    
+
     .mobile-text {
       @apply text-sm;
     }
-    
+
     .mobile-spacing {
       @apply space-y-3;
+    }
+
+    /* Mobile header improvements */
+    .mobile-header {
+      @apply px-4 py-3;
+    }
+
+    .mobile-header h1, .mobile-header h2, .mobile-header h3, .mobile-header h4, .mobile-header h5, .mobile-header h6 {
+      @apply text-lg;
+    }
+
+    .mobile-header .lead {
+      @apply text-sm;
+    }
+
+    /* Mobile card improvements */
+    .mobile-card {
+      @apply rounded-lg mx-2;
+    }
+
+    .mobile-card .card-body {
+      @apply p-3;
+    }
+
+    /* Mobile button improvements */
+    .mobile-btn {
+      @apply w-full py-3 px-4 text-base touch-target;
+    }
+
+    /* Mobile navigation improvements */
+    .mobile-nav {
+      @apply px-2 py-1;
+    }
+
+    .mobile-nav .nav-link {
+      @apply px-3 py-2 text-sm;
+    }
+
+    /* Mobile spacing improvements */
+    .mobile-container {
+      @apply px-4 py-3;
+    }
+
+    .mobile-grid {
+      @apply gap-3;
     }
   }
 
@@ -541,9 +586,13 @@
     .tablet-padding {
       @apply px-6 py-3;
     }
-    
+
     .tablet-text {
       @apply text-base;
+    }
+
+    .tablet-card {
+      @apply p-4;
     }
   }
 
@@ -552,7 +601,7 @@
     .desktop-padding {
       @apply px-8 py-4;
     }
-    
+
     .desktop-text {
       @apply text-lg;
     }
@@ -563,6 +612,384 @@
     .touch-target {
       min-height: 44px;
       min-width: 44px;
+    }
+
+    .btn {
+      @apply touch-target py-3 px-4 text-base;
+    }
+
+    .btn-lg {
+      @apply py-4 px-6 text-lg;
+    }
+
+    .btn-sm {
+      @apply py-2 px-3 text-sm;
+    }
+  }
+
+  /* Enhanced mobile card styles */
+  @media (max-width: 768px) {
+    .card {
+      @apply mx-2 rounded-lg;
+    }
+
+    .card-body {
+      @apply p-4;
+    }
+
+    .card-header {
+      @apply p-4;
+    }
+
+    .card-title {
+      @apply text-lg;
+    }
+  }
+
+  /* Mobile dashboard specific styles */
+  @media (max-width: 768px) {
+    .dashboard-header {
+      @apply text-center px-4 py-4;
+    }
+
+    .dashboard-header h1 {
+      @apply text-xl;
+    }
+
+    .dashboard-header .lead {
+      @apply text-sm;
+    }
+
+    .dashboard-stats {
+      @apply gap-3;
+    }
+
+    .dashboard-stats .card {
+      @apply mx-2;
+    }
+
+    .dashboard-stats .card-body {
+      @apply p-3;
+    }
+
+    .dashboard-stats h3 {
+      @apply text-lg;
+    }
+
+    .dashboard-stats p {
+      @apply text-sm;
+    }
+  }
+
+  /* Mobile chat interface improvements */
+  @media (max-width: 768px) {
+    .chat-container {
+      @apply px-3 py-2;
+    }
+
+    .chat-message {
+      @apply mx-2 p-3;
+    }
+
+    .chat-input {
+      @apply mx-2 p-3;
+    }
+
+    .chat-input .form-control {
+      @apply py-3 px-4 text-base;
+    }
+  }
+
+  /* Mobile document library improvements */
+  @media (max-width: 768px) {
+    .documents-header {
+      @apply px-4 py-3 text-center;
+    }
+
+    .documents-header h1 {
+      @apply text-lg;
+    }
+
+    .documents-search {
+      @apply mx-2;
+    }
+
+    .documents-grid {
+      @apply px-2 gap-3;
+    }
+
+    .document-card {
+      @apply mx-1;
+    }
+
+    .document-card .card-body {
+      @apply p-3;
+    }
+
+    .document-card h6 {
+      @apply text-base;
+    }
+  }
+
+  /* Mobile navigation improvements */
+  @media (max-width: 768px) {
+    .navbar {
+      @apply px-4 py-3;
+    }
+
+    .navbar-brand h5 {
+      @apply text-lg;
+    }
+
+    .navbar-brand small {
+      @apply text-xs;
+    }
+
+    .nav-link {
+      @apply px-3 py-2 text-sm;
+    }
+
+    .navbar-nav {
+      @apply gap-1;
+    }
+  }
+
+  /* Mobile form improvements */
+  @media (max-width: 640px) {
+    .form-control {
+      @apply py-3 px-4 text-base;
+    }
+
+    .form-label {
+      @apply text-sm mb-2;
+    }
+
+    .form-text {
+      @apply text-xs;
+    }
+  }
+
+  /* Mobile modal improvements */
+  @media (max-width: 640px) {
+    .modal-dialog {
+      @apply mx-2 my-4;
+    }
+
+    .modal-content {
+      @apply rounded-lg;
+    }
+
+    .modal-header {
+      @apply px-4 py-3;
+    }
+
+    .modal-body {
+      @apply px-4 py-3;
+    }
+
+    .modal-footer {
+      @apply px-4 py-3;
+    }
+  }
+
+  /* Mobile animation optimizations */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in-up,
+    .animate-fade-in-down,
+    .animate-slide-in-left,
+    .animate-slide-in-right,
+    .animate-float,
+    .animate-pulse-slow,
+    .animate-slide-down,
+    .animate-slide-up,
+    .animate-scale-in,
+    .animate-bounce-gentle {
+      animation: none !important;
+    }
+
+    .hover-lift:hover,
+    .hover-scale:hover,
+    .hover-glow:hover {
+      transform: none !important;
+    }
+
+    .btn:hover {
+      transform: none !important;
+    }
+
+    .card:hover {
+      transform: none !important;
+    }
+  }
+
+  /* High DPI screen optimizations */
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .card {
+      border-width: 0.5px;
+    }
+
+    .btn {
+      border-width: 0.5px;
+    }
+  }
+
+  /* Mobile-specific improvements */
+  @media (max-width: 768px) {
+    /* Better safe area handling for mobile devices */
+    .min-vh-100 {
+      min-height: 100vh;
+      min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
+    }
+
+    /* Prevent horizontal scroll */
+    body {
+      overflow-x: hidden;
+    }
+
+    /* Better touch targets */
+    button, .btn, input, select, textarea {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Improve text readability on mobile */
+    body {
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    /* Better spacing for mobile */
+    .container-fluid {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    /* Mobile-optimized cards */
+    .card {
+      margin-left: 0.5rem;
+      margin-right: 0.5rem;
+      border-radius: 0.75rem;
+    }
+
+    /* Mobile navigation improvements */
+    .navbar {
+      padding: 1rem;
+    }
+
+    .navbar-brand {
+      font-size: 1.25rem;
+    }
+
+    /* Mobile form improvements */
+    .form-control {
+      font-size: 16px; /* Prevents zoom on iOS */
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+    }
+
+    /* Mobile modal improvements */
+    .modal-dialog {
+      margin: 1rem;
+    }
+
+    .modal-content {
+      border-radius: 1rem;
+    }
+
+    /* Mobile chat improvements */
+    .chat-message {
+      margin: 0.5rem;
+      padding: 1rem;
+      border-radius: 1rem;
+    }
+
+    /* Mobile dashboard improvements */
+    .dashboard-header {
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .dashboard-header h1 {
+      font-size: 1.5rem;
+    }
+
+    .dashboard-stats .card {
+      margin: 0.5rem;
+    }
+
+    /* Mobile document grid improvements */
+    .documents-grid .card {
+      margin: 0.25rem;
+    }
+
+    .documents-header {
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .documents-header h1 {
+      font-size: 1.25rem;
+    }
+  }
+
+  /* iOS specific improvements */
+  @supports (-webkit-touch-callout: none) {
+    .min-vh-100 {
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    input, textarea {
+      font-size: 16px;
+    }
+  }
+
+  /* Android specific improvements */
+  @media screen and (max-width: 768px) and (orientation: landscape) {
+    .min-vh-100 {
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+  }
+
+  /* Prevent text selection on mobile for UI elements */
+  @media (max-width: 768px) {
+    .card, .btn, .navbar, .nav-link {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    .card:active, .btn:active {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+  }
+
+  /* Better focus indicators for accessibility */
+  @media (max-width: 768px) {
+    .btn:focus, .form-control:focus {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+  }
+
+  /* Mobile performance optimizations */
+  @media (max-width: 768px) {
+    /* Reduce animations on low-performance devices */
+    .animate-fade-in-up,
+    .animate-fade-in-down,
+    .animate-slide-in-left,
+    .animate-slide-in-right {
+      animation-duration: 0.3s;
+    }
+
+    /* Optimize for touch */
+    * {
+      -webkit-tap-highlight-color: rgba(16, 185, 129, 0.1);
     }
   }
 

@@ -114,7 +114,7 @@ const StudentDocuments = () => {
   return (
     <div className="min-vh-100 bg-pattern">
       {/* Header */}
-      <nav className="navbar navbar-expand-lg glass shadow-soft">
+      <nav className="navbar navbar-expand-lg glass shadow-soft documents-header">
         <Container fluid>
           <div className="d-flex align-items-center">
             <Link
@@ -122,27 +122,28 @@ const StudentDocuments = () => {
               className="d-flex align-items-center text-muted hover-text-dark me-4"
             >
               <ArrowLeft size={20} className="me-2" />
-              <span>Back to Dashboard</span>
+              <span className="d-none d-sm-inline">Back to Dashboard</span>
+              <span className="d-sm-none">Back</span>
             </Link>
             <div className="d-flex align-items-center">
-              <div className="bg-success rounded-xl d-flex align-items-center justify-content-center me-3" 
+              <div className="bg-success rounded-xl d-flex align-items-center justify-content-center me-3"
                    style={{width: '48px', height: '48px'}}>
                 <FileText size={24} className="text-white" />
               </div>
               <div>
                 <h4 className="mb-0 fw-bold text-gradient">Document Library</h4>
-                <small className="text-muted">Browse available documents</small>
+                <small className="text-muted d-none d-md-block">Browse available documents</small>
               </div>
             </div>
           </div>
-          
+
           <div className="d-flex align-items-center">
             <div className="d-flex align-items-center bg-primary rounded-xl px-3 py-2">
-              <div className="bg-white bg-opacity-20 rounded-circle d-flex align-items-center justify-content-center me-2" 
+              <div className="bg-white bg-opacity-20 rounded-circle d-flex align-items-center justify-content-center me-2"
                    style={{width: '32px', height: '32px'}}>
                 <span className="text-white fw-bold">{user?.fullName?.charAt(0) || 'S'}</span>
               </div>
-              <div>
+              <div className="d-none d-sm-block">
                 <div className="text-white fw-semibold small">{user?.fullName || 'Student'}</div>
                 <div className="text-white-50 small">Student</div>
               </div>
@@ -228,7 +229,7 @@ const StudentDocuments = () => {
         {/* Search and Actions */}
         <Row className="mb-4">
           <Col>
-            <Card className="glass">
+            <Card className="glass documents-search">
               <Card.Body className="p-4">
                 <Row className="align-items-center">
                   <Col md={8}>
@@ -244,7 +245,7 @@ const StudentDocuments = () => {
                       />
                     </div>
                   </Col>
-                  <Col md={4} className="text-md-end">
+                  <Col md={4} className="text-md-end mt-3 mt-md-0">
                     <div className="d-flex align-items-center justify-content-md-end gap-3">
                       <span className="text-muted small">
                         Showing {filteredDocuments.length} of {documents.length}
@@ -257,7 +258,7 @@ const StudentDocuments = () => {
                         className="d-flex align-items-center"
                       >
                         <RefreshCw size={16} className={`me-1 ${loading ? 'animate-spin' : ''}`} />
-                        Refresh
+                        <span className="d-none d-sm-inline">Refresh</span>
                       </Button>
                     </div>
                   </Col>
@@ -305,7 +306,7 @@ const StudentDocuments = () => {
 
         {/* Documents Grid */}
         {!loading && !error && (
-          <Row className="g-4">
+          <Row className="g-4 documents-grid">
             {filteredDocuments.length === 0 ? (
               <Col>
                 <Card className="text-center py-5">
@@ -327,7 +328,7 @@ const StudentDocuments = () => {
             ) : (
               filteredDocuments.map((document) => (
                 <Col xs={12} sm={6} lg={4} key={document.document_id}>
-                  <Card className="h-100 hover-lift">
+                  <Card className="h-100 hover-lift document-card">
                     <Card.Body className="p-4">
                       <div className="d-flex align-items-start mb-3">
                         <div className="flex-shrink-0 me-3">
