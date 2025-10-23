@@ -336,21 +336,53 @@ async def list_documents(current_user: dict = Depends(get_current_user)):
             print(f"   ⚠️ No documents found in MongoDB for user {user_id}")
             print(f"   This could mean: 1) No documents uploaded, 2) MongoDB save failed during upload, 3) User ID mismatch")
 
-        # Convert to the format expected by frontend
-        user_docs = []
-        for doc_record in user_doc_records:
-            # Get chunks for this document from vector store
-            doc_chunks = get_vector_store().get_document_chunks(doc_record["document_id"])
+            # Fallback: Try to find documents in vector store that might belong to this user
+            print(f"   🔄 Fallback: Checking vector store for user documents...")
+            all_docs = get_vector_store().list_documents()
+            fallback_docs = []
 
-            user_docs.append({
-                "document_id": doc_record["document_id"],
-                "filename": doc_record.get("filename", "Unknown"),
-                "original_filename": doc_record.get("original_filename", doc_record.get("filename", "Unknown")),
-                "file_size": doc_record.get("file_size", 0),
-                "chunk_count": doc_record.get("chunk_count", len(doc_chunks)),
-                "uploaded_at": doc_record.get("uploaded_at", ""),
-                "status": doc_record.get("status", "unknown")
-            })
+            for doc in all_docs:
+                doc_id = doc["document_id"]
+                doc_chunks = get_vector_store().get_document_chunks(doc_id)
+
+                if doc_chunks:
+                    first_chunk_metadata = doc_chunks[0].get("metadata", {})
+                    chunk_user_id = first_chunk_metadata.get("user_id")
+
+                    if chunk_user_id == user_id:
+                        print(f"      ✅ Found document in vector store: {doc_id}")
+                        fallback_docs.append({
+                            "document_id": doc_id,
+                            "filename": doc.get("filename", "Unknown"),
+                            "original_filename": doc.get("filename", "Unknown"),
+                            "file_size": 0,  # Not available in vector store
+                            "chunk_count": len(doc_chunks),
+                            "uploaded_at": "",  # Not available in vector store
+                            "status": "found_in_vector_store"
+                        })
+
+            if len(fallback_docs) > 0:
+                print(f"   ✅ Fallback found {len(fallback_docs)} documents in vector store")
+                user_docs = fallback_docs
+            else:
+                print(f"   ❌ No documents found in vector store either")
+                user_docs = []
+        else:
+            # Convert MongoDB records to frontend format
+            user_docs = []
+            for doc_record in user_doc_records:
+                # Get chunks for this document from vector store
+                doc_chunks = get_vector_store().get_document_chunks(doc_record["document_id"])
+
+                user_docs.append({
+                    "document_id": doc_record["document_id"],
+                    "filename": doc_record.get("filename", "Unknown"),
+                    "original_filename": doc_record.get("original_filename", doc_record.get("filename", "Unknown")),
+                    "file_size": doc_record.get("file_size", 0),
+                    "chunk_count": doc_record.get("chunk_count", len(doc_chunks)),
+                    "uploaded_at": doc_record.get("uploaded_at", ""),
+                    "status": doc_record.get("status", "unknown")
+                })
 
         print(f"   📊 Returning {len(user_docs)} documents for user")
 
