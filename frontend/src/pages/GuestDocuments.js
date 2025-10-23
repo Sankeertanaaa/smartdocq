@@ -25,42 +25,15 @@ const GuestDocuments = () => {
     try {
       setLoading(true);
       setError('');
-      
-      // Get public sessions to find which documents are actually public
-      const sessionsResponse = await historyService.listSessions();
-      const publicSessions = sessionsResponse.sessions.filter(session => session.is_public === true);
-      
-      // Collect all document IDs from public sessions
-      const publicDocumentIds = new Set();
-      publicSessions.forEach(session => {
-        if (session.document_ids && session.document_ids.length > 0) {
-          session.document_ids.forEach(docId => publicDocumentIds.add(docId));
-        }
-      });
-      
-      if (publicDocumentIds.size === 0) {
-        // No public documents available
-        setDocuments([]);
-        setStats({ totalDocuments: 0 });
-        return;
-      }
-      
-      // Get all documents and filter for only public ones
-      const documentsData = await uploadService.listDocuments();
-      const allDocuments = documentsData.documents || [];
-      
-      // Filter documents to only include those used in public sessions
-      const publicDocuments = allDocuments.filter(doc => 
-        publicDocumentIds.has(doc.document_id)
-      );
-      
-      setDocuments(publicDocuments);
+
+      // Since public functionality has been removed, show no documents
+      setDocuments([]);
       setStats({
-        totalDocuments: publicDocuments.length
+        totalDocuments: 0
       });
     } catch (err) {
-      console.error('Error fetching public documents:', err);
-      setError('Failed to load public documents. Please try again.');
+      console.error('Error fetching documents:', err);
+      setError('Failed to load documents. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -243,12 +216,20 @@ const GuestDocuments = () => {
             {filteredDocuments.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No public documents found</h3>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">Public Documents Unavailable</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  {searchTerm 
-                    ? 'Try adjusting your search terms.' 
-                    : 'No documents have been shared publicly yet. Public documents appear here when users make their chat sessions public.'}
+                  {searchTerm
+                    ? 'Try adjusting your search terms.'
+                    : 'Public document sharing has been disabled. Please register as a student to upload and access your own documents.'}
                 </p>
+                {!searchTerm && (
+                  <Link
+                    to="/register"
+                    className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Register as Student
+                  </Link>
+                )}
               </div>
             ) : (
               filteredDocuments.map((document) => (
@@ -266,7 +247,7 @@ const GuestDocuments = () => {
                       <p className="text-sm text-gray-500 mt-1">
                         {getFileType(document.filename)}
                       </p>
-                      
+
                       <div className="mt-4">
                         <div className="flex items-center text-sm text-green-600">
                           <Eye className="h-4 w-4 mr-2" />
@@ -275,7 +256,7 @@ const GuestDocuments = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="flex items-center justify-between">
                       <Link

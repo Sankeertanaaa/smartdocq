@@ -276,33 +276,35 @@ async def list_documents(current_user: dict = Depends(get_current_user)):
                 "is_admin_view": True
             }
 
-        # For regular users, show only documents they uploaded
+        # For regular users, get documents from MongoDB instead of just vector store
         print(f"   🔍 Finding documents for user {user_id}")
 
+        # Get document metadata from MongoDB for this user
+        documents_collection = get_documents_collection()
+        user_doc_records = await documents_collection.find({"user_id": user_id}).to_list(length=None)
+
+        print(f"   📄 Found {len(user_doc_records)} document records in MongoDB for user")
+
+        # Convert to the format expected by frontend
         user_docs = []
-        for doc in all_docs:
-            doc_id = doc["document_id"]
+        for doc_record in user_doc_records:
+            # Get chunks for this document from vector store
+            doc_chunks = get_vector_store().get_document_chunks(doc_record["document_id"])
 
-            # Check if document belongs to user by checking chunks
-            doc_chunks = get_vector_store().get_document_chunks(doc_id)
-            print(f"      Doc {doc_id[:20]}... has {len(doc_chunks)} chunks")
-
-            if doc_chunks:
-                # Check first chunk for user_id
-                first_chunk_metadata = doc_chunks[0].get("metadata", {})
-                chunk_user_id = first_chunk_metadata.get("user_id")
-
-                # Include if user uploaded it
-                if chunk_user_id == user_id:
-                    print(f"         ✅ User uploaded - adding")
-                    user_docs.append(doc)
-                else:
-                    print(f"         ❌ Not accessible (owner: {chunk_user_id})")
+            user_docs.append({
+                "document_id": doc_record["document_id"],
+                "filename": doc_record.get("filename", "Unknown"),
+                "original_filename": doc_record.get("original_filename", doc_record.get("filename", "Unknown")),
+                "file_size": doc_record.get("file_size", 0),
+                "chunk_count": doc_record.get("chunk_count", len(doc_chunks)),
+                "uploaded_at": doc_record.get("uploaded_at", ""),
+                "status": doc_record.get("status", "unknown")
+            })
 
         print(f"   📊 Returning {len(user_docs)} documents for user")
 
         return {
-            "total_chunks": len([chunk for doc in user_docs for chunk in get_vector_store().get_document_chunks(doc["document_id"])]),
+            "total_chunks": sum(doc.get("chunk_count", 0) for doc in user_docs),
             "collection_name": stats["collection_name"],
             "documents": user_docs
         }

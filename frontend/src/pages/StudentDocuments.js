@@ -42,7 +42,7 @@ const StudentDocuments = () => {
       setDocuments(userDocuments);
       setStats({
         totalDocuments: userDocuments.length,
-        publicDocuments: userDocuments.filter(doc => doc.is_public).length
+        publicDocuments: 0 // No public documents in private system
       });
     } catch (err) {
       console.error('Error fetching documents:', err);
@@ -58,8 +58,7 @@ const StudentDocuments = () => {
 
   const filteredDocuments = documents.filter(doc =>
     doc.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (doc.public_title && doc.public_title.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (doc.public_description && doc.public_description.toLowerCase().includes(searchTerm.toLowerCase()))
+    (doc.original_filename && doc.original_filename.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getFileIcon = (filename) => {
@@ -174,12 +173,12 @@ const StudentDocuments = () => {
                        }}>
                     <MessageSquare size={28} className="text-white" />
                   </div>
-                  <Badge bg="secondary" className="rounded-pill">Community</Badge>
+                  <Badge bg="secondary" className="rounded-pill">Private</Badge>
                 </div>
                 <h3 className="display-6 fw-bold text-dark mb-2">
                   {loading ? <Spinner animation="border" size="sm" /> : (stats.publicDocuments || 0)}
                 </h3>
-                <p className="text-muted fw-semibold mb-0">Public Documents</p>
+                <p className="text-muted fw-semibold mb-0">Total Documents</p>
               </Card.Body>
             </Card>
           </Col>
@@ -324,20 +323,20 @@ const StudentDocuments = () => {
                         <div className="flex-grow-1 min-w-0">
                           <div className="d-flex align-items-center mb-1">
                             <h6 className="fw-bold text-dark mb-0 text-truncate">
-                              {document.public_title || document.filename}
+                              {document.filename}
                             </h6>
-                            {document.is_public && (
-                              <Badge bg="success" className="ms-2 rounded-pill" style={{fontSize: '0.7rem'}}>
-                                Public
-                              </Badge>
-                            )}
                           </div>
                           <p className="text-muted small mb-0">
-                            {document.public_description || getFileType(document.filename)}
+                            {getFileType(document.filename)}
                           </p>
-                          {!document.public_title && (
+                          {document.original_filename && document.original_filename !== document.filename && (
                             <p className="text-muted small mb-0">
-                              {getFileType(document.filename)}
+                              Original: {document.original_filename}
+                            </p>
+                          )}
+                          {document.file_size && (
+                            <p className="text-muted small mb-0">
+                              Size: {(document.file_size / 1024 / 1024).toFixed(2)} MB
                             </p>
                           )}
                         </div>
@@ -348,10 +347,15 @@ const StudentDocuments = () => {
                           <Eye size={14} className="me-2" />
                           <span>Available for chat</span>
                         </div>
-                        <div className="d-flex align-items-center text-muted small">
+                        <div className="d-flex align-items-center text-muted small mb-2">
                           <File size={14} className="me-2" />
-                          <span>Ready to use</span>
+                          <span>{document.chunk_count || 0} chunks processed</span>
                         </div>
+                        {document.uploaded_at && (
+                          <div className="d-flex align-items-center text-muted small">
+                            <span>Uploaded: {new Date(document.uploaded_at).toLocaleDateString()}</span>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="d-flex gap-2">
