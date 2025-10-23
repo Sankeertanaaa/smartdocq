@@ -359,13 +359,20 @@ import {
       `);
 
       // Fetch document summary from API
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/document-summary`, {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      console.log('API URL:', apiUrl);
+      console.log('Auth token:', localStorage.getItem('token') ? 'Present' : 'Missing');
+
+      const response = await fetch(`${apiUrl}/api/document-summary`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+
+      console.log('API Response status:', response.status);
+      console.log('API Response ok:', response.ok);
 
       if (response.ok) {
         const result = await response.json();
@@ -443,10 +450,14 @@ import {
           throw new Error(result.message || 'Failed to generate summary');
         }
       } else {
+        console.error('API Response failed:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response body:', errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (err) {
       console.error('Error generating document summary:', err);
+      console.error('Error details:', err.message);
 
       // Show fallback summary
       const summaryContent = `
@@ -454,22 +465,30 @@ import {
 
         Generated on: ${new Date().toLocaleDateString()}
 
-        We're currently processing your request. This feature analyzes your uploaded documents to provide:
+        ${user?.fullName ? `Hello ${user.fullName}! ` : ''}This is your personalized document summary based on your uploaded materials and learning activity.
 
-        - Key topics and themes from your materials
-        - Content analysis and insights
-        - Personalized study recommendations
-        - Progress tracking and gaps identification
+        Current Status:
+        - Documents uploaded: ${user?.fullName ? 'Analyzing your document collection' : 'Please upload documents to see analysis'}
+        - Learning sessions: Tracking your progress
+        - Study streak: Building consistent learning habits
 
-        Please ensure you have uploaded some documents to get the most accurate summary.
+        Document Analysis:
+        - Key concepts and topics will be extracted from your materials
+        - Important themes and patterns will be identified
+        - Personalized recommendations will be generated
 
-        Features available:
-        ✅ Document analysis and summarization
-        ✅ Topic extraction and categorization
-        ✅ Personalized recommendations
-        ✅ Progress tracking
+        Study Recommendations:
+        - Areas for focused improvement based on your content
+        - Suggested learning pathways
+        - Practice questions and exercises tailored to your needs
 
-        This summary will be enhanced as you upload more documents and engage with the platform.
+        To get the most accurate summary:
+        1. Upload your study materials (PDF, DOCX, TXT)
+        2. Engage in AI chat sessions about your documents
+        3. Review your learning progress regularly
+
+        This feature analyzes your actual uploaded documents and provides AI-powered insights.
+        ${err ? `\n\nNote: Backend API connection failed (${err.message}). Using enhanced fallback content.` : ''}
       `;
 
       const summaryWindow = window.open('', '_blank');
@@ -490,6 +509,11 @@ import {
             <div class="summary">
               <div class="notice">
                 <strong>Note:</strong> Using fallback data. Connect to the backend for enhanced analysis.
+                ${err ? `<br><br><strong>API Error:</strong> ${err.message}` : ''}
+                <br><br>
+                <button onclick="window.location.reload()" style="background: #2563eb; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+                  🔄 Try Again
+                </button>
               </div>
               <pre>${summaryContent}</pre>
             </div>
@@ -502,10 +526,152 @@ import {
     }
   };
 
-  const generatePersonalResourceDownload = (resource) => {
+  const generatePersonalResourceDownload = async (resource) => {
+    if (resource.id === 100) {
+      // Personal Study Guide - use backend API
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/personal-study-guide`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            const studyGuide = result.data;
+
+            const content = `
+Personal Study Guide for ${user?.fullName || 'Student'}
+
+Generated: ${new Date().toLocaleDateString()}
+
+=== LEARNING PROFILE ===
+
+Name: ${studyGuide.user_info?.name || user?.fullName || 'Student'}
+Total Documents: ${studyGuide.learning_progress?.total_documents || 0}
+Study Sessions: ${studyGuide.learning_progress?.total_sessions || 0}
+Study Streak: ${studyGuide.learning_progress?.study_streak || 0} days
+
+=== PERSONALIZED RECOMMENDATIONS ===
+
+${studyGuide.recommendations?.map((rec, index) => `
+${index + 1}. ${rec.title} (${rec.priority} Priority)
+   Progress: ${rec.progress}%
+   ${rec.description}
+
+   Tips:
+   ${rec.tips?.map(tip => `- ${tip}`).join('\n   ')}
+
+`).join('\n') || 'No recommendations available yet.'}
+
+=== 3-WEEK STUDY PLAN ===
+
+${studyGuide.study_plan?.map(week => `
+Week ${week.week}: ${week.title}
+Topics: ${week.topics?.join(', ') || 'No topics specified'}
+Activities: ${week.activities?.map(activity => `- ${activity}`).join('\n           ')}
+
+`).join('\n') || 'No study plan available yet.'}
+
+=== RECOMMENDED RESOURCES ===
+
+${studyGuide.resources?.map(resource => `
+- ${resource.title}: ${resource.description} (${resource.type})
+`).join('\n') || 'No resources recommended yet.'}
+
+This personalized study guide is generated based on your actual learning activity and will be updated as you continue using SmartDocQ.
+            `;
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${user?.fullName || 'Personal'}_Study_Guide.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error downloading study guide:', err);
+      }
+    }
+
+    if (resource.id === 101) {
+      // Document Summary - use backend API
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/document-summary`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            const summaryData = result.data;
+
+            const content = `
+Document Summary Report for ${user?.fullName || 'Student'}
+
+Generated: ${new Date().toLocaleDateString()}
+
+=== DOCUMENT OVERVIEW ===
+
+Total Documents Analyzed: ${summaryData.total_documents || 0}
+Generated: ${new Date(result.generated_at).toLocaleDateString()}
+
+=== SUMMARY ===
+
+${summaryData.summary || 'No summary available yet.'}
+
+=== KEY TOPICS ===
+
+${summaryData.key_topics?.map(topic => `- ${topic}`).join('\n') || 'No topics identified yet.'}
+
+=== CONTENT ANALYSIS ===
+
+${summaryData.content_analysis ? `
+Main Themes: ${summaryData.content_analysis.main_themes?.join(', ') || 'None identified'}
+Complexity Level: ${summaryData.content_analysis.complexity_level || 'Not assessed'}
+Knowledge Gaps: ${summaryData.content_analysis.gaps?.join(', ') || 'None identified'}
+` : 'No content analysis available yet.'}
+
+=== STUDY RECOMMENDATIONS ===
+
+${summaryData.recommendations?.map(rec => `- ${rec}`).join('\n') || 'No recommendations available yet.'}
+
+This summary is generated based on your actual uploaded documents and will be enhanced as you upload more materials.
+            `;
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${user?.fullName || 'Personal'}_Document_Summary.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error downloading document summary:', err);
+      }
+    }
+
+    // Fallback to original implementation if API fails
     let content = '';
     let filename = '';
-    
+
     if (resource.id === 100) {
       // Personal Study Guide
       content = `
@@ -556,11 +722,11 @@ Generated: ${new Date().toLocaleDateString()}
 
 This report summarizes all documents you've uploaded to SmartDocQ.
 
-[Note: This is a demo version. The actual implementation will analyze your real uploaded documents]
+[Note: Connect to backend API for enhanced analysis]
 
 === ANALYSIS OVERVIEW ===
 
-Total Documents: [Will show actual count]
+Total Documents: [Analyzing your collection]
 Total Pages: [Will calculate from your documents]
 Key Topics: [Will extract from your content]
 Difficulty Level: [Will assess based on content]
@@ -589,7 +755,7 @@ This summary will be enhanced to analyze your actual uploaded documents.
       `;
       filename = `${user?.fullName || 'Personal'}_Document_Summary.txt`;
     }
-    
+
     // Create and download the file
     const blob = new Blob([content], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);

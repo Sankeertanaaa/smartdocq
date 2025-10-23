@@ -248,9 +248,25 @@ ${new Date().toLocaleDateString()}
               <div className="text-danger mb-3">⚠️</div>
               <h5>Error Loading Study Guide</h5>
               <p className="text-muted mb-4">{error}</p>
-              <Link to="/resources">
-                <Button variant="primary">Back to Resources</Button>
-              </Link>
+              <div className="mb-3">
+                <p className="text-muted small mb-2">This might be due to:</p>
+                <ul className="text-muted small mb-3">
+                  <li>Backend server not running</li>
+                  <li>Network connectivity issues</li>
+                  <li>Authentication token expired</li>
+                  <li>AI service configuration issues</li>
+                </ul>
+              </div>
+              <div className="d-flex justify-content-center gap-2">
+                <Button variant="primary" onClick={() => window.location.reload()}>
+                  🔄 Try Again
+                </Button>
+                <Link to="/contact">
+                  <Button variant="outline-primary">
+                    Contact Support
+                  </Button>
+                </Link>
+              </div>
             </Card.Body>
           </Card>
         </Container>
