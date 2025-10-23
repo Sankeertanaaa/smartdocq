@@ -11,7 +11,13 @@ class ChatResponse(BaseModel):
     answer: str = Field(..., description="AI-generated answer")
     sources: List[Dict[str, Any]] = Field(..., description="Source chunks used for answer")
     session_id: str = Field(..., description="Session ID")
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        # Ensure datetime objects are properly serialized
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 class UploadResponse(BaseModel):
     document_id: str = Field(..., description="Unique document ID")
@@ -36,6 +42,12 @@ class ChatHistoryItem(BaseModel):
     answer: str = Field(..., description="AI answer")
     timestamp: datetime = Field(..., description="Timestamp")
     sources: List[Dict[str, Any]] = Field(..., description="Source chunks")
+
+    class Config:
+        # Ensure datetime objects are properly serialized
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 class ChatHistoryResponse(BaseModel):
     history: List[ChatHistoryItem] = Field(..., description="Chat history")

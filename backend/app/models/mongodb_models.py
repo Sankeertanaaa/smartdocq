@@ -41,7 +41,11 @@ class UserModel(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
-    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={datetime: lambda v: v.isoformat()}
+    )
 
 class SessionModel(BaseModel):
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
@@ -59,7 +63,11 @@ class SessionModel(BaseModel):
     tags: List[str] = Field(default_factory=list, description="User-defined tags for organization")
     summary: Optional[str] = Field(None, description="AI-generated session summary")
 
-    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={datetime: lambda v: v.isoformat()}
+    )
 
 class MessageModel(BaseModel):
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
@@ -71,7 +79,11 @@ class MessageModel(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Message timestamp")
     document_id: Optional[str] = Field(None, description="Associated document ID")
 
-    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={datetime: lambda v: v.isoformat()}
+    )
 
 class FeedbackModel(BaseModel):
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
@@ -82,7 +94,11 @@ class FeedbackModel(BaseModel):
     comment: Optional[str] = Field(None, description="Optional feedback comment")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Feedback timestamp")
 
-    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={datetime: lambda v: v.isoformat()}
+    )
 
 class DocumentModel(BaseModel):
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
@@ -97,4 +113,8 @@ class DocumentModel(BaseModel):
     uploaded_at: datetime = Field(default_factory=datetime.utcnow, description="Upload timestamp")
     processed_at: Optional[datetime] = Field(None, description="Processing completion timestamp")
 
-    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={datetime: lambda v: v.isoformat()}
+    )

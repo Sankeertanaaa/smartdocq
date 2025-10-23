@@ -9,39 +9,61 @@
 const normalizeTimestamp = (timestamp) => {
   // Handle null, undefined, or empty values
   if (!timestamp) {
+    console.warn('normalizeTimestamp: received null/undefined timestamp');
     return new Date().toISOString();
   }
 
   // If it's already a Date object, convert to ISO string
   if (timestamp instanceof Date) {
+    console.warn('normalizeTimestamp: received Date object', timestamp);
     return timestamp.toISOString();
   }
 
   // If it's a number (timestamp in milliseconds), convert to Date then ISO string
   if (typeof timestamp === 'number') {
+    console.warn('normalizeTimestamp: received number', timestamp);
     return new Date(timestamp).toISOString();
   }
 
   // If it's a string, ensure it has timezone info
   if (typeof timestamp === 'string') {
     // Add 'Z' if it doesn't have timezone info
-    return timestamp.includes('Z') || timestamp.includes('+') || timestamp.includes('-')
-      ? timestamp
-      : timestamp + 'Z';
-  }
-
-  // If it's not a string, convert to string first
-  if (timestamp && typeof timestamp === 'object') {
-    // If it has toISOString method (Date object), use it
-    if (typeof timestamp.toISOString === 'function') {
-      return timestamp.toISOString();
+    try {
+      return timestamp.includes('Z') || timestamp.includes('+') || timestamp.includes('-')
+        ? timestamp
+        : timestamp + 'Z';
+    } catch (error) {
+      console.error('normalizeTimestamp: string.includes failed', timestamp, error);
+      return new Date().toISOString();
     }
-    // Otherwise convert to string
-    return String(timestamp);
   }
 
-  // Fallback for any other type
-  return String(timestamp || '');
+  // If it's an object with toISOString method (like MongoDB datetime), use it
+  if (timestamp && typeof timestamp === 'object' && typeof timestamp.toISOString === 'function') {
+    console.warn('normalizeTimestamp: received datetime-like object', timestamp);
+    return timestamp.toISOString();
+  }
+
+  // If it's an object with $date property (MongoDB format), use it
+  if (timestamp && typeof timestamp === 'object' && timestamp.$date) {
+    console.warn('normalizeTimestamp: received MongoDB date object', timestamp);
+    return new Date(timestamp.$date).toISOString();
+  }
+
+  // Fallback: convert to string and try to parse
+  try {
+    console.warn('normalizeTimestamp: fallback conversion for', timestamp, 'typeof:', typeof timestamp);
+    const fallbackDate = new Date(timestamp);
+    if (isNaN(fallbackDate.getTime())) {
+      console.error('normalizeTimestamp: invalid date created from', timestamp);
+      return new Date().toISOString();
+    }
+    return fallbackDate.toISOString();
+  } catch (error) {
+    console.error('normalizeTimestamp: failed to convert', timestamp, error);
+    return new Date().toISOString();
+  }
+};
 
 /**
  * Convert UTC timestamp string to local Date object

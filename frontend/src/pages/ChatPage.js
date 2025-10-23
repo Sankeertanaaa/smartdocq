@@ -72,7 +72,7 @@ const ChatPage = () => {
                 id: `user-${Date.now()}-${Math.random()}`,
                 type: 'user',
                 content: item.question,
-                timestamp: new Date(item.timestamp)
+                timestamp: item.timestamp  // Keep as string, don't convert to Date
               });
             }
             if (item.answer) {
@@ -81,7 +81,7 @@ const ChatPage = () => {
                 type: 'ai',
                 content: item.answer,
                 sources: item.sources || [],
-                timestamp: new Date(item.timestamp)
+                timestamp: item.timestamp  // Keep as string, don't convert to Date
               });
             }
           }
@@ -122,7 +122,7 @@ const ChatPage = () => {
       id: Date.now(),
       type: 'user',
       content: question,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),  // Convert to ISO string
     };
     addMessage(userMessage);
 
@@ -140,7 +140,7 @@ const ChatPage = () => {
         type: 'ai',
         content: response.answer,
         sources: response.sources,
-        timestamp: new Date(response.timestamp),
+        timestamp: response.timestamp,  // Keep as string from API response
         sessionId: response.session_id,
       };
       addMessage(aiMessage);
@@ -170,7 +170,7 @@ const ChatPage = () => {
         id: Date.now() + 1,
         type: 'error',
         content: 'Sorry, I encountered an error while processing your question. Please try again.',
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),  // Convert to ISO string
       };
       addMessage(errorMessage);
     } finally {
