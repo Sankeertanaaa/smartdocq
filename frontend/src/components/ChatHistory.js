@@ -78,7 +78,7 @@ const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
             id: `user-${item.timestamp}`,
             type: 'user',
             content: item.question,
-            timestamp: item.timestamp
+            timestamp: item.timestamp  // Keep as string, don't convert to Date
           });
           messageMap.set(`user-${item.timestamp}`, true);
         }
@@ -89,7 +89,7 @@ const ChatHistory = ({ isVisible, onToggle, onSessionSelect }) => {
             type: 'ai',
             content: item.answer,
             sources: item.sources || [],
-            timestamp: item.timestamp
+            timestamp: item.timestamp  // Keep as string, don't convert to Date
           });
           messageMap.set(`ai-${item.timestamp}`, true);
         }

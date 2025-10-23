@@ -1,19 +1,40 @@
 import os
-
-# TF-IDF doesn't need transformer environment variables
-
+from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.api.routes import upload, chat, history, feedback, auth, demo
 from app.core.config import settings
 from app.services.database import connect_to_mongo, close_mongo_connection
 import time
+import json
 
 app = FastAPI(
     title="SmartDocQ API",
     description="AI-powered document question answering system",
     version="1.0.3"  # Force rebuild - Oct 22 2025
 )
+
+# Custom JSON encoder for datetime objects
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+# Override the default JSON response to use our custom encoder
+app.default_response_class = JSONResponse
+
+# Set custom JSON encoder
+import fastapi
+original_jsonable_encoder = fastapi.encoders.jsonable_encoder
+
+def custom_jsonable_encoder(obj, **kwargs):
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    return original_jsonable_encoder(obj, **kwargs)
+
+fastapi.encoders.jsonable_encoder = custom_jsonable_encoder
 
 # Add request logging middleware
 @app.middleware("http")
