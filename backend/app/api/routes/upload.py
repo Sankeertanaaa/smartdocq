@@ -365,16 +365,62 @@ async def list_documents(current_user: dict = Depends(get_current_user)):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
 
-@router.delete("/documents/{document_id}")
-async def delete_document(document_id: str):
+@router.get("/debug/documents")
+async def debug_documents(current_user: dict = Depends(get_current_user)):
     """
-    Delete a document and all its chunks
+    Debug endpoint to check MongoDB connection and document data
     """
     try:
-        success = get_vector_store().delete_document(document_id)
-        if success:
-            return {"message": f"Document {document_id} deleted successfully"}
-        else:
-            raise HTTPException(status_code=404, detail="Document not found")
+        documents_collection = get_documents_collection()
+
+        if documents_collection is None:
+            return {
+                "error": "MongoDB not available",
+                "mongodb_status": "disconnected",
+                "documents": []
+            }
+
+        # Get all documents from MongoDB
+        all_docs = await documents_collection.find({}).to_list(length=None)
+
+        # Get current user info
+        user_id = str(current_user.get("_id", current_user.get("id")))
+        user_email = current_user.get("email")
+
+        # Filter user's documents
+        user_docs = [doc for doc in all_docs if doc.get("user_id") == user_id]
+
+        return {
+            "mongodb_status": "connected",
+            "total_documents_in_db": len(all_docs),
+            "user_id": user_id,
+            "user_email": user_email,
+            "user_documents_in_db": len(user_docs),
+            "user_documents": [
+                {
+                    "document_id": doc.get("document_id"),
+                    "filename": doc.get("filename"),
+                    "user_id": doc.get("user_id"),
+                    "uploaded_at": doc.get("uploaded_at"),
+                    "status": doc.get("status")
+                }
+                for doc in user_docs
+            ],
+            "all_documents": [
+                {
+                    "document_id": doc.get("document_id"),
+                    "filename": doc.get("filename"),
+                    "user_id": doc.get("user_id"),
+                    "uploaded_at": doc.get("uploaded_at"),
+                    "status": doc.get("status")
+                }
+                for doc in all_docs
+            ]
+        }
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}") 
+        return {
+            "error": str(e),
+            "mongodb_status": "error",
+            "documents": []
+        } 
