@@ -881,9 +881,11 @@ This summary will be enhanced to analyze your actual uploaded documents.
                   <p className="text-muted small mb-3">
                     Find answers to common questions about using SmartDocQ features.
                   </p>
-                  <Button variant="outline-info" size="sm" className="w-100">
-                    View FAQ
-                  </Button>
+                  <Link to="/faq" className="text-decoration-none">
+                    <Button variant="outline-info" size="sm" className="w-100">
+                      View FAQ
+                    </Button>
+                  </Link>
                 </Card.Body>
               </Card>
             </Col>
@@ -899,9 +901,11 @@ This summary will be enhanced to analyze your actual uploaded documents.
                   <p className="text-muted small mb-3">
                     Get in touch with our support team for personalized assistance.
                   </p>
-                  <Button variant="outline-success" size="sm" className="w-100">
-                    Contact Us
-                  </Button>
+                  <Link to="/contact" className="text-decoration-none">
+                    <Button variant="outline-success" size="sm" className="w-100">
+                      Contact Us
+                    </Button>
+                  </Link>
                 </Card.Body>
               </Card>
             </Col>
@@ -917,9 +921,11 @@ This summary will be enhanced to analyze your actual uploaded documents.
                   <p className="text-muted small mb-3">
                     Read detailed guides and tutorials on using SmartDocQ effectively.
                   </p>
-                  <Button variant="outline-warning" size="sm" className="w-100">
-                    Read Docs
-                  </Button>
+                  <Link to="/faq" className="text-decoration-none">
+                    <Button variant="outline-warning" size="sm" className="w-100">
+                      Read Docs
+                    </Button>
+                  </Link>
                 </Card.Body>
               </Card>
             </Col>
@@ -935,7 +941,12 @@ This summary will be enhanced to analyze your actual uploaded documents.
                   <p className="text-muted small mb-3">
                     Connect with other users and share your learning experiences.
                   </p>
-                  <Button variant="outline-danger" size="sm" className="w-100">
+                  <Button
+                    variant="outline-danger"
+                    size="sm"
+                    className="w-100"
+                    href="mailto:community@smartdocq.com?subject=Community Interest"
+                  >
                     Join Community
                   </Button>
                 </Card.Body>
