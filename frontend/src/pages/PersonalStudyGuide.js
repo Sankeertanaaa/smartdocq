@@ -367,7 +367,7 @@ ${new Date().toLocaleDateString()}
                   <Col md={3}>
                     <div className="text-center p-3 bg-light rounded-lg">
                       <div className="h4 mb-1 text-primary fw-bold">
-                        {studyGuide?.learningProgress.totalDocuments}
+                        {studyGuide?.learningProgress?.totalDocuments || 0}
                       </div>
                       <small className="text-muted">Documents Analyzed</small>
                     </div>
@@ -375,7 +375,7 @@ ${new Date().toLocaleDateString()}
                   <Col md={3}>
                     <div className="text-center p-3 bg-light rounded-lg">
                       <div className="h4 mb-1 text-success fw-bold">
-                        {studyGuide?.learningProgress.totalSessions}
+                        {studyGuide?.learningProgress?.totalSessions || 0}
                       </div>
                       <small className="text-muted">Chat Sessions</small>
                     </div>
@@ -383,7 +383,7 @@ ${new Date().toLocaleDateString()}
                   <Col md={3}>
                     <div className="text-center p-3 bg-light rounded-lg">
                       <div className="h4 mb-1 text-info fw-bold">
-                        {studyGuide?.learningProgress.averageScore}%
+                        {studyGuide?.learningProgress?.averageScore || 0}%
                       </div>
                       <small className="text-muted">Avg Performance</small>
                     </div>
@@ -391,7 +391,7 @@ ${new Date().toLocaleDateString()}
                   <Col md={3}>
                     <div className="text-center p-3 bg-light rounded-lg">
                       <div className="h4 mb-1 text-warning fw-bold">
-                        {studyGuide?.learningProgress.studyStreak}
+                        {studyGuide?.learningProgress?.studyStreak || 0}
                       </div>
                       <small className="text-muted">Day Streak</small>
                     </div>
@@ -412,7 +412,7 @@ ${new Date().toLocaleDateString()}
                   Personalized Recommendations
                 </h6>
                 <Row className="g-4">
-                  {studyGuide?.recommendations.map((rec, index) => (
+                  {studyGuide?.recommendations?.map((rec, index) => (
                     <Col md={4} key={index}>
                       <Card className="h-100 border-0 shadow-sm">
                         <Card.Body className="p-3">
@@ -465,7 +465,7 @@ ${new Date().toLocaleDateString()}
                   3-Week Study Plan
                 </h6>
                 <Row className="g-3">
-                  {studyGuide?.studyPlan.map((week, index) => (
+                  {studyGuide?.studyPlan?.map((week, index) => (
                     <Col md={4} key={index}>
                       <Card className="border-0 shadow-sm">
                         <Card.Body className="p-3">
@@ -516,7 +516,7 @@ ${new Date().toLocaleDateString()}
                   Recommended Resources
                 </h6>
                 <Row className="g-3">
-                  {studyGuide?.resources.map((resource, index) => (
+                  {studyGuide?.resources?.map((resource, index) => (
                     <Col md={4} key={index}>
                       <Card className="border-0 shadow-sm hover-lift">
                         <Card.Body className="p-3">
