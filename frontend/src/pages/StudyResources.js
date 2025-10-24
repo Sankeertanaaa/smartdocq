@@ -388,7 +388,7 @@ const StudyResources = () => {
       `);
 
       // Fetch document summary from API
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      const apiUrl = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/$/, '');
       console.log('API URL:', apiUrl);
       console.log('Auth token:', localStorage.getItem('token') ? 'Present' : 'Missing');
 
@@ -559,7 +559,8 @@ const StudyResources = () => {
     if (resource.id === 100) {
       // Personal Study Guide - use backend API
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/personal-study-guide`, {
+        const baseUrl = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+        const response = await fetch(`${baseUrl}/api/personal-study-guide`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -634,7 +635,8 @@ This personalized study guide is generated based on your actual learning activit
     if (resource.id === 101) {
       // Document Summary - use backend API
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/document-summary`, {
+        const baseUrl = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+        const response = await fetch(`${baseUrl}/api/document-summary`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

@@ -31,7 +31,8 @@ const PersonalStudyGuide = () => {
     const loadStudyGuide = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/personal-study-guide`, {
+        const baseUrl = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+        const response = await fetch(`${baseUrl}/api/personal-study-guide`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
