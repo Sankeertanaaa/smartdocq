@@ -1038,7 +1038,15 @@ This summary will be enhanced to analyze your actual uploaded documents.
                     </p>
                   </Col>
                   <Col md={4} className="text-md-end">
-                    <Button variant="light" className="px-4" onClick={() => setShowHelpSections(!showHelpSections)}>
+                    <Button 
+                      variant="light" 
+                      className="px-4" 
+                      onClick={() => {
+                        console.log('Get Help button clicked! Current state:', showHelpSections);
+                        setShowHelpSections(!showHelpSections);
+                        console.log('New state should be:', !showHelpSections);
+                      }}
+                    >
                       {showHelpSections ? 'Hide Help' : 'Get Help'}
                     </Button>
                   </Col>
