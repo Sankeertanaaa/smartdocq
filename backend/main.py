@@ -61,7 +61,9 @@ from fastapi.middleware.cors import CORSMiddleware
 # CORS middleware - Allow frontend origins
 allowed_origins = [
     "http://localhost:3000",
+    "http://localhost:3001",
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
     "http://127.0.0.1:60369",
     "https://smartdocq.vercel.app",
     "https://smartdocq-indol.vercel.app",
