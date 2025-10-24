@@ -926,6 +926,7 @@
       padding: 1rem;
       text-align: center;
     }
+  }
 
   /* Chat History sidebar responsive styles */
   @media (max-width: 768px) {
@@ -1130,4 +1131,4 @@
       font-size: 0.75rem !important;
     }
   }
-} 
+}
