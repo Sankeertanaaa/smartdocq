@@ -31,4 +31,16 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+export const historyService = {
+  getHistory: async () => {
+    const response = await api.get("/api/history");
+    return response.data;
+  },
+
+  deleteHistoryItem: async (id) => {
+    const response = await api.delete(`/api/history/${id}`);
+    return response.data;
+  },
+};
+
 export default api;
