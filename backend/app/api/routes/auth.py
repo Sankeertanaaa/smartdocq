@@ -362,53 +362,22 @@ async def deactivate_user(user_id: str, current_user: dict = Depends(get_current
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    
+
     user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     users_collection = get_users_collection()
     from bson import ObjectId
     await users_collection.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": {"is_active": False, "updated_at": datetime.utcnow()}}
     )
-    
+
     return {"message": f"User {user['full_name']} has been deactivated"}
-
-@router.options("/users/{user_id}/deactivate")
-async def options_deactivate(user_id: str):
-    return {"message": "OK"}
-
-# Add proper OPTIONS endpoints for CORS preflight
-from fastapi.responses import JSONResponse
-
-@router.options("/login")
-async def options_login():
-    return JSONResponse(content={"message": "OK"}, status_code=200)
-
-@router.options("/register")
-async def options_register():
-    return JSONResponse(content={"message": "OK"}, status_code=200)
-
-@router.options("/verify")
-async def options_verify():
-    return JSONResponse(content={"message": "OK"}, status_code=200)
-
-@router.options("/logout")
-async def options_logout():
-    return JSONResponse(content={"message": "OK"}, status_code=200)
-
-@router.options("/me")
-async def options_me():
-    return JSONResponse(content={"message": "OK"}, status_code=200)
-
-@router.options("/users")
-async def options_users():
-    return JSONResponse(content={"message": "OK"}, status_code=200)
 
 # Create a default admin user for testing
 async def create_default_admin():

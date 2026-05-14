@@ -106,12 +106,6 @@ app.add_middleware(
     max_age=3600,
 )
 
-# Add OPTIONS handler for all routes
-@app.options("/{path:path}")
-async def handle_options(path: str):
-    """Handle OPTIONS requests for all endpoints"""
-    return {"message": "OK"}
-
 print("✅ CORS middleware configured with regex pattern for *.vercel.app")
 
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
