@@ -21,7 +21,7 @@ langsmith==0.1.17
 # Database / Vector DB
 chromadb==0.4.18
 motor==3.3.2
-pymongo==4.17.0
+pymongo==4.6.1
 
 # Document processing
 pymupdf==1.23.8
