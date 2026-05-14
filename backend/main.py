@@ -8,12 +8,8 @@ from app.core.config import settings
 from app.services.database import connect_to_mongo, close_mongo_connection
 import time
 import json
-
-app = FastAPI(
-    title="SmartDocQ API",
-    description="AI-powered document question answering system",
-    version="1.0.3"  # Force rebuild - Oct 22 2025
-)
+import fastapi
+from contextlib import asynccontextmanager
 
 # Custom JSON encoder for datetime objects
 class CustomJSONEncoder(json.JSONEncoder):
@@ -25,11 +21,7 @@ class CustomJSONEncoder(json.JSONEncoder):
             return obj.isoformat()
         return super().default(obj)
 
-# Override the default JSON response to use our custom encoder
-app.default_response_class = JSONResponse
-
 # Set custom JSON encoder
-import fastapi
 original_jsonable_encoder = fastapi.encoders.jsonable_encoder
 
 def custom_jsonable_encoder(obj, **kwargs):
@@ -42,64 +34,7 @@ def custom_jsonable_encoder(obj, **kwargs):
 
 fastapi.encoders.jsonable_encoder = custom_jsonable_encoder
 
-# Add request logging middleware
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    start_time = time.time()
-    print(f"🔥 REQUEST: {request.method} {request.url}")
-    print(f"🔥 Headers: {dict(request.headers)}")
-    
-    response = await call_next(request)
-    
-    process_time = time.time() - start_time
-    print(f"🔥 RESPONSE: {response.status_code} in {process_time:.4f}s")
-    
-    return response
-
-from fastapi.middleware.cors import CORSMiddleware
-
-# CORS middleware - Allow frontend origins
-allowed_origins = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001",
-    "http://127.0.0.1:60369",
-    "https://smartdocq.vercel.app",
-    "https://smartdocq-indol.vercel.app",
-    "https://smartdocq-evoan947s-sankeertanas-projects.vercel.app",
-    "https://smartdocq-ivd03drlu-sankeertanas-projects.vercel.app",  # Current preview deployment
-    "https://smartdoc-backend-production-6905.up.railway.app",  # Railway backend
-]
-
-print(f"🔧 CORS: Allowing origins: {allowed_origins}")
-print(f"🔧 CORS: Also allowing all *.vercel.app domains via regex pattern")
-
-# Add CORS middleware with both explicit origins and regex pattern
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",  # Allow all Vercel deployments
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,  # Cache preflight requests for 1 hour
-)
-
-# Add OPTIONS handler for all routes
-@app.options("/{path:path}")
-async def handle_options(path: str):
-    """Handle OPTIONS requests for all endpoints"""
-    return {"message": "OK"}
-
-print("✅ CORS middleware configured with regex pattern for *.vercel.app")
-print(f"✅ CORS will allow any domain matching: https://.*\\.vercel\\.app")
-
-# Include API routes
-# Lifespan event handler (replaces deprecated on_event)
-from contextlib import asynccontextmanager
-
+# Lifespan event handler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -117,12 +52,67 @@ async def lifespan(app: FastAPI):
     # Shutdown
     await close_mongo_connection()
 
+# Create FastAPI app with lifespan
 app = FastAPI(
     title="SmartDocQ API",
     description="AI-powered document question answering system",
-    version="1.0.4",  # Updated
+    version="1.0.4",
     lifespan=lifespan
 )
+
+# Override the default JSON response to use our custom encoder
+app.default_response_class = JSONResponse
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    print(f"🔥 REQUEST: {request.method} {request.url}")
+    print(f"🔥 Headers: {dict(request.headers)}")
+    
+    response = await call_next(request)
+    
+    process_time = time.time() - start_time
+    print(f"🔥 RESPONSE: {response.status_code} in {process_time:.4f}s")
+    
+    return response
+
+# CORS middleware - Allow frontend origins
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:60369",
+    "https://smartdocq.vercel.app",
+    "https://smartdocq-indol.vercel.app",
+    "https://smartdocq-evoan947s-sankeertanas-projects.vercel.app",
+    "https://smartdocq-ivd03drlu-sankeertanas-projects.vercel.app",
+    "https://smartdoc-backend-production-6905.up.railway.app",
+]
+
+print(f"🔧 CORS: Allowing origins: {allowed_origins}")
+print(f"🔧 CORS: Also allowing all *.vercel.app domains via regex pattern")
+
+# Add CORS middleware with both explicit origins and regex pattern
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
+)
+
+# Add OPTIONS handler for all routes
+@app.options("/{path:path}")
+async def handle_options(path: str):
+    """Handle OPTIONS requests for all endpoints"""
+    return {"message": "OK"}
+
+print("✅ CORS middleware configured with regex pattern for *.vercel.app")
 
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(upload.router, prefix="/api", tags=["upload"])

@@ -264,9 +264,11 @@ class AIService:
                      if point.strip() and not point.strip().startswith('---')]
             
             return points[:10]  # Return max 10 key points
-            
+
         except Exception as e:
             return [f"Unable to extract key points due to an error: {str(e)}"]
+
+    def generate_personalized_study_guide(self, user_data, documents, sessions, messages):
         """Generate a personalized study guide based on user's learning data"""
         try:
             # Prepare comprehensive context
