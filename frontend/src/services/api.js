@@ -44,20 +44,24 @@ api.interceptors.response.use(
 
 export const authService = {
   register: async (userData) => {
+    console.log(
+    "REGISTER FULL URL:",
+    `${API_BASE_URL}/api/auth/register`);
     const response = await api.post(
-      "/api/auth/register",
-      userData
-    );
+    "/api/auth/register",
+    userData);
     return response.data;
   },
-
+  
   login: async (credentials) => {
+    console.log(
+    "LOGIN FULL URL:",
+    `${API_BASE_URL}/api/auth/login`);
     const response = await api.post(
       "/api/auth/login",
-      credentials
-    );
-    return response.data;
-  },
+      credentials);
+      return response.data;
+    },
 
   verifyToken: async () => {
     const response = await api.get(
