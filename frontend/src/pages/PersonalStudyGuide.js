@@ -158,7 +158,7 @@ const PersonalStudyGuide = () => {
     };
 
     loadStudyGuide();
-  }, [userId]);
+  }, [userId, user]);
 
   const handleDownload = () => {
     if (!studyGuide) return;
