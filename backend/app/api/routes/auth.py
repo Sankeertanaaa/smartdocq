@@ -251,7 +251,7 @@ async def register(user_data: UserCreate):
 
 @router.post("/login", response_model=Token)
 async def login(user_credentials: UserLogin):
-    """Login user and return JWT token"""
+    """Authenticate user and return JWT token"""
     users_collection = get_users_collection()
     if users_collection is None:
         raise HTTPException(
@@ -378,6 +378,37 @@ async def deactivate_user(user_id: str, current_user: dict = Depends(get_current
     )
     
     return {"message": f"User {user['full_name']} has been deactivated"}
+
+@router.options("/users/{user_id}/deactivate")
+async def options_deactivate(user_id: str):
+    return {"message": "OK"}
+
+# Add proper OPTIONS endpoints for CORS preflight
+from fastapi.responses import JSONResponse
+
+@router.options("/login")
+async def options_login():
+    return JSONResponse(content={"message": "OK"}, status_code=200)
+
+@router.options("/register")
+async def options_register():
+    return JSONResponse(content={"message": "OK"}, status_code=200)
+
+@router.options("/verify")
+async def options_verify():
+    return JSONResponse(content={"message": "OK"}, status_code=200)
+
+@router.options("/logout")
+async def options_logout():
+    return JSONResponse(content={"message": "OK"}, status_code=200)
+
+@router.options("/me")
+async def options_me():
+    return JSONResponse(content={"message": "OK"}, status_code=200)
+
+@router.options("/users")
+async def options_users():
+    return JSONResponse(content={"message": "OK"}, status_code=200)
 
 # Create a default admin user for testing
 async def create_default_admin():

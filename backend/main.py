@@ -87,24 +87,42 @@ app.add_middleware(
     max_age=3600,  # Cache preflight requests for 1 hour
 )
 
+# Add OPTIONS handler for all routes
+@app.options("/{path:path}")
+async def handle_options(path: str):
+    """Handle OPTIONS requests for all endpoints"""
+    return {"message": "OK"}
+
 print("✅ CORS middleware configured with regex pattern for *.vercel.app")
 print(f"✅ CORS will allow any domain matching: https://.*\\.vercel\\.app")
 
 # Include API routes
-# Startup and shutdown events
-@app.on_event("startup")
-async def startup_event():
+# Lifespan event handler (replaces deprecated on_event)
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
     await connect_to_mongo()
     # Create default admin user (only if MongoDB is connected)
     from app.services.database import db
     if db.database is not None:
         await auth.create_default_admin()
+        print("✅ Database connected and admin user created")
     else:
-        print("⚠️  Skipping admin user creation (MongoDB not available)")
+        print("❌ Database connection failed")
 
-@app.on_event("shutdown")
-async def shutdown_event():
+    yield
+
+    # Shutdown
     await close_mongo_connection()
+
+app = FastAPI(
+    title="SmartDocQ API",
+    description="AI-powered document question answering system",
+    version="1.0.4",  # Updated
+    lifespan=lifespan
+)
 
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(upload.router, prefix="/api", tags=["upload"])
