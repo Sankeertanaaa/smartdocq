@@ -10,7 +10,6 @@ import {
   BookOpen,
   User,
   Shield,
-  CreditCard,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
