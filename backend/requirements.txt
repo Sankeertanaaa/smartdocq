@@ -33,6 +33,7 @@ bcrypt==4.0.1
 # HTTP / Validation
 httpx==0.25.2
 pydantic==2.5.0
+pydantic-settings==2.1.0
 
 # ML / Embeddings
 numpy==1.24.3
