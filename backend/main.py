@@ -109,7 +109,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # API Routes
 app.include_router(
     auth.router,
@@ -152,7 +151,6 @@ app.include_router(
     prefix="/api/demo",
     tags=["demo"]
 )
-
 
 # Root endpoints
 @app.get("/")
