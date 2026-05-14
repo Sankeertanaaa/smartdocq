@@ -55,52 +55,52 @@ export const AuthProvider = ({ children }) => {
         }
       })();
 
-      if (storedToken) {
-        try {
-          console.log(
-            "Verifying stored token..."
-          );
+      // No token
+      if (!storedToken) {
+        setLoading(false);
+        return;
+      }
 
-          const userData =
-            await authService.verifyToken();
+      try {
+        console.log(
+          "Verifying stored token..."
+        );
 
-          console.log(
-            "Token verified successfully:",
-            userData
-          );
+        const userData =
+          await authService.verifyToken();
 
-          setUser(userData);
+        console.log(
+          "Token verified successfully:",
+          userData
+        );
+
+        setUser(userData);
+        setToken(storedToken);
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(userData)
+        );
+
+      } catch (error) {
+        console.warn(
+          "Token verification failed:",
+          error?.response?.status
+        );
+
+        if (
+          error?.response?.status === 401
+        ) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+
+          setToken(null);
+          setUser(null);
+
+        } else if (storedUser) {
+          setUser(storedUser);
           setToken(storedToken);
-
-          localStorage.setItem(
-            "user",
-            JSON.stringify(userData)
-          );
-
-        } catch (error) {
-          console.warn(
-            "Token verification failed:",
-            error?.response?.status
-          );
-
-          if (
-            error?.response?.status === 401
-          ) {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-
-            setToken(null);
-            setUser(null);
-
-          } else if (storedUser) {
-            setUser(storedUser);
-            setToken(storedToken);
-          }
         }
-
-      } else if (storedUser) {
-        localStorage.removeItem("user");
-        setUser(null);
       }
 
       setLoading(false);

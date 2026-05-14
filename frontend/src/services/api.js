@@ -62,13 +62,13 @@ export const authService = {
       credentials);
       return response.data;
     },
-
-  verifyToken: async () => {
-    const response = await api.get(
-      "/api/auth/verify"
-    );
-    return response.data;
-  },
+    
+    verifyToken: async () => {
+      const response = await api.get(
+        "/api/auth/verify");
+      
+      return response.data;
+    },
 
   logout: async () => {
     const response = await api.post(
@@ -162,10 +162,19 @@ export const demoService = {
 // ================= HISTORY SERVICE =================
 
 export const historyService = {
+  listSessions: async () => {
+    const response = await api.get(
+      "/api/history/sessions"
+    );
+
+    return response.data;
+  },
+
   getHistory: async () => {
     const response = await api.get(
       "/api/history"
     );
+
     return response.data;
   },
 
@@ -173,6 +182,7 @@ export const historyService = {
     const response = await api.delete(
       `/api/history/${id}`
     );
+
     return response.data;
   },
 };

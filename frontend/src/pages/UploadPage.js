@@ -42,7 +42,14 @@ const UploadPage = () => {
 
       validateFile(file);
 
-      const response = await uploadService.uploadDocument(file);
+      const formData = new FormData();
+      formData.append("file", file);
+
+console.log("Uploading FormData file:", file.name);
+
+const response =await uploadService.uploadDocument(
+    formData
+  );
       
       setUploadStatus({ 
         type: 'success', 
