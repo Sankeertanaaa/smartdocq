@@ -8,7 +8,7 @@ import {
   Eye,
   Calendar
 } from 'lucide-react';
-import { uploadService, historyService } from '../services/api';
+import {} from '../services/api';
 
 const GuestDocuments = () => {
   const [documents, setDocuments] = useState([]);

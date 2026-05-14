@@ -7,7 +7,6 @@ import {
   Download,
   FileText,
   Calendar,
-  User,
   Target,
   Lightbulb,
   CheckCircle,

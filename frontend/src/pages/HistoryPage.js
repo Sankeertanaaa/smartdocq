@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { History, Trash2, Calendar, MessageCircle, Clock, Eye } from 'lucide-react';
 import { historyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { formatRelativeTime, formatTimeOnly, parseUTCTimestamp } from '../utils/timestamp';
+import { formatRelativeTime, parseUTCTimestamp } from '../utils/timestamp';
 
 const HistoryPage = () => {
   const { user } = useAuth();
