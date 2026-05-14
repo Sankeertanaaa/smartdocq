@@ -1,28 +1,30 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta
 from typing import Optional
+
 import bcrypt
 import jwt
-from pydantic import BaseModel, EmailStr
-import os
+from bson import ObjectId
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 
 from app.core.config import settings
-from app.models.schemas import User, UserCreate, UserLogin, Token, UserResponse
 from app.models.mongodb_models import UserModel
+from app.models.schemas import (
+    Token,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+)
 from app.services.database import get_users_collection
 
 router = APIRouter()
 security = HTTPBearer()
 
-# JWT Configuration
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
-# Debug: Print what's being used
-print(f"🔑 AUTH MODULE - Using SECRET_KEY: {SECRET_KEY[:10]}...")
-print(f"🔑 AUTH MODULE - Using ALGORITHM: {ALGORITHM}")
 
 class UserInDB(BaseModel):
     id: str
@@ -33,263 +35,189 @@ class UserInDB(BaseModel):
     created_at: datetime
     is_active: bool = True
 
+
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt"""
     salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8")
+    )
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Create a JWT access token"""
+
+def create_access_token(
+    data: dict,
+    expires_delta: Optional[timedelta] = None
+):
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+
+    expire = (
+        datetime.utcnow() + expires_delta
+        if expires_delta
+        else datetime.utcnow() + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
+    )
+
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
 
-async def get_user_by_email(email: str) -> Optional[dict]:
-    """Get user by email from database"""
+    return jwt.encode(
+        to_encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+
+
+async def get_user_by_email(email: str):
     users_collection = get_users_collection()
+
     if users_collection is None:
         return None
-    return await users_collection.find_one({"email": email.lower()})
 
-async def get_user_by_id(user_id: str) -> Optional[dict]:
-    """Get user by ID from database"""
+    return await users_collection.find_one({
+        "email": email.lower()
+    })
+
+
+async def get_user_by_id(user_id: str):
     users_collection = get_users_collection()
+
     if users_collection is None:
         return None
-    from bson import ObjectId
+
     try:
-        print(f"🔍 Looking up user by ID: {user_id}")
-        
-        # Try as string first (for databases with string IDs)
-        user = await users_collection.find_one({"_id": user_id})
-        if user:
-            print(f"✅ User found by string ID: {user.get('email')}")
-            return user
-        
-        # Try as ObjectId (for properly formatted databases)
-        try:
-            object_id = ObjectId(user_id)
-            print(f"🔍 Trying as ObjectId: {object_id}")
-            user = await users_collection.find_one({"_id": object_id})
-            if user:
-                print(f"✅ User found by ObjectId: {user.get('email')}")
-                return user
-        except:
-            pass
-        
-        print(f"❌ User not found with ID: {user_id}")
-        return None
-        
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
+        return await users_collection.find_one({
+            "_id": ObjectId(user_id)
+        })
+
+    except Exception:
         return None
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
-    """Get current authenticated user from JWT token"""
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
-        print(f"🔐 Verifying token with SECRET_KEY: {SECRET_KEY[:10]}... (len: {len(SECRET_KEY)})")
-        print(f"🔐 Token starts with: {credentials.credentials[:30]}...")
-        
-        # Try to decode without verification first to see the payload
-        try:
-            unverified = jwt.decode(credentials.credentials, options={"verify_signature": False})
-            print(f"🔍 Unverified token payload: {unverified}")
-        except Exception as e:
-            print(f"⚠️ Could not decode token without verification: {e}")
-        
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            credentials.credentials,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
         user_id: str = payload.get("sub")
-        print(f"✅ Token decoded successfully, user_id: {user_id}")
+
         if user_id is None:
             raise credentials_exception
-    except jwt.ExpiredSignatureError as e:
-        print(f"❌ Token expired: {e}")
+
+    except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired. Please log in again.",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Token expired"
         )
-    except jwt.InvalidTokenError as e:
-        print(f"❌ Invalid token (wrong SECRET_KEY?): {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token. Please log in again.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.PyJWTError as e:
-        print(f"❌ JWT decode error: {e}")
+
+    except jwt.PyJWTError:
         raise credentials_exception
-    
+
     user = await get_user_by_id(user_id)
+
     if user is None:
-        print(f"❌ User not found for id: {user_id}")
         raise credentials_exception
-    
-    print(f"✅ User authenticated: {user.get('email')}")
+
     return user
 
-@router.post("/register", response_model=dict)
+
+@router.post("/register")
 async def register(user_data: UserCreate):
-    """Register a new user"""
-    print(f"📝 Registration attempt: {user_data.email} (role: {user_data.role})")
-    print(f"📝 Full name: {user_data.fullName} (length: {len(user_data.fullName)})")
-
     users_collection = get_users_collection()
+
     if users_collection is None:
-        print("❌ Database connection failed - users_collection is None")
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Registration service unavailable (database not connected)"
+            status_code=503,
+            detail="Database unavailable"
         )
 
-    # Validate input data
-    try:
-        # Check if email already exists
-        existing_user = await users_collection.find_one({"email": user_data.email.lower()})
-        if existing_user:
-            print(f"❌ Email already registered: {user_data.email}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
+    existing_user = await users_collection.find_one({
+        "email": user_data.email.lower()
+    })
 
-        # Validate role
-        if user_data.role not in ["student", "guest"]:
-            print(f"❌ Invalid role: {user_data.role}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid role. Only 'student' and 'guest' roles are allowed for registration"
-            )
-
-        # Validate fullName length
-        if len(user_data.fullName.strip()) < 2:
-            print(f"❌ Full name too short: '{user_data.fullName}'")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Full name must be at least 2 characters long"
-            )
-
-        if len(user_data.fullName) > 100:
-            print(f"❌ Full name too long: {len(user_data.fullName)} chars")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Full name must be less than 100 characters long"
-            )
-
-        # Validate password length
-        if len(user_data.password) < 8:
-            print(f"❌ Password too short: {len(user_data.password)} chars")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must be at least 8 characters long"
-            )
-
-        print(f"✅ All validations passed, creating user...")
-
-        # Create new user
-        hashed_password = hash_password(user_data.password)
-
-        new_user = UserModel(
-            full_name=user_data.fullName.strip(),
-            email=user_data.email.lower(),
-            hashed_password=hashed_password,
-            role=user_data.role,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-
-        # Store user in MongoDB
-        result = await users_collection.insert_one(new_user.dict(by_alias=True))
-
-        if result.inserted_id:
-            print(f"✅ User registered successfully: {user_data.email} (ID: {result.inserted_id})")
-            return {
-                "message": "User registered successfully",
-                "user": {
-                    "id": str(result.inserted_id),
-                    "fullName": new_user.full_name,
-                    "email": new_user.email,
-                    "role": new_user.role
-                }
-            }
-        else:
-            print("❌ Failed to insert user into database")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create user"
-            )
-
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
-    except Exception as e:
-        print(f"❌ Unexpected error during registration: {str(e)}")
-        import traceback
-        traceback.print_exc()
+    if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Registration failed: {str(e)}"
+            status_code=400,
+            detail="Email already registered"
         )
+
+    hashed_password = hash_password(user_data.password)
+
+    new_user = UserModel(
+        full_name=user_data.fullName.strip(),
+        email=user_data.email.lower(),
+        hashed_password=hashed_password,
+        role=user_data.role,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+
+    result = await users_collection.insert_one(
+        new_user.dict(by_alias=True)
+    )
+
+    return {
+        "message": "User registered successfully",
+        "user": {
+            "id": str(result.inserted_id),
+            "fullName": new_user.full_name,
+            "email": new_user.email,
+            "role": new_user.role,
+        }
+    }
+
 
 @router.post("/login", response_model=Token)
 async def login(user_credentials: UserLogin):
-    """Authenticate user and return JWT token"""
     users_collection = get_users_collection()
+
     if users_collection is None:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication service unavailable (database not connected)"
+            status_code=503,
+            detail="Database unavailable"
         )
-    
-    # Get user from database
-    user_doc = await users_collection.find_one({"email": user_credentials.email.lower()})
+
+    user_doc = await users_collection.find_one({
+        "email": user_credentials.email.lower()
+    })
+
     if not user_doc:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=401,
             detail="Incorrect email or password"
         )
-    
-    # Verify password
-    if not verify_password(user_credentials.password, user_doc["hashed_password"]):
+
+    if not verify_password(
+        user_credentials.password,
+        user_doc["hashed_password"]
+    ):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=401,
             detail="Incorrect email or password"
         )
-    
-    # Check if user is active
-    if not user_doc.get("is_active", True):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Account is deactivated"
-        )
-    
-    # Create access token
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    print(f"🔑 Creating token with SECRET_KEY: {SECRET_KEY[:10]}...")
+
     access_token = create_access_token(
-        data={"sub": str(user_doc["_id"]), "role": user_doc["role"]}, 
-        expires_delta=access_token_expires
+        data={
+            "sub": str(user_doc["_id"]),
+            "role": user_doc["role"]
+        }
     )
-    print(f"✅ Token created: {access_token[:30]}...")
-    
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -298,125 +226,74 @@ async def login(user_credentials: UserLogin):
             "fullName": user_doc["full_name"],
             "email": user_doc["email"],
             "role": user_doc["role"],
-            "is_active": user_doc.get("is_active", True)
+            "is_active": user_doc.get("is_active", True),
         }
     }
+
 
 @router.get("/verify", response_model=UserResponse)
-async def verify_token(current_user: dict = Depends(get_current_user)):
-    """Verify JWT token and return user information"""
+async def verify_token(
+    current_user: dict = Depends(get_current_user)
+):
     return {
         "id": str(current_user["_id"]),
         "fullName": current_user["full_name"],
         "email": current_user["email"],
         "role": current_user["role"],
-        "is_active": current_user.get("is_active", True)
+        "is_active": current_user.get("is_active", True),
     }
 
-@router.post("/logout", response_model=dict)
-async def logout(current_user: dict = Depends(get_current_user)):
-    """Logout user (client-side token removal)"""
-    return {"message": "Successfully logged out"}
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: dict = Depends(get_current_user)):
-    """Get current user information"""
+async def get_current_user_info(
+    current_user: dict = Depends(get_current_user)
+):
     return {
         "id": str(current_user["_id"]),
         "fullName": current_user["full_name"],
         "email": current_user["email"],
         "role": current_user["role"],
-        "is_active": current_user.get("is_active", True)
+        "is_active": current_user.get("is_active", True),
     }
 
-# Admin-only endpoints
-@router.get("/users", response_model=list[UserResponse])
-async def get_all_users(current_user: dict = Depends(get_current_user)):
-    """Get all users (admin only)"""
-    if current_user["role"] != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
-        )
-    
-    users_collection = get_users_collection()
-    cursor = users_collection.find({})
-    users = await cursor.to_list(length=None)
-    
-    return [
-        {
-            "id": str(user["_id"]),
-            "fullName": user["full_name"],
-            "email": user["email"],
-            "role": user["role"],
-            "is_active": user.get("is_active", True)
-        }
-        for user in users
-    ]
 
-@router.post("/users/{user_id}/deactivate")
-async def deactivate_user(user_id: str, current_user: dict = Depends(get_current_user)):
-    """Deactivate a user (admin only)"""
-    if current_user["role"] != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
-        )
+@router.post("/logout")
+async def logout():
+    return {
+        "message": "Successfully logged out"
+    }
 
-    user = await get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
 
-    users_collection = get_users_collection()
-    from bson import ObjectId
-    await users_collection.update_one(
-        {"_id": ObjectId(user_id)},
-        {"$set": {"is_active": False, "updated_at": datetime.utcnow()}}
-    )
-
-    return {"message": f"User {user['full_name']} has been deactivated"}
-
-# Create a default admin user for testing
 async def create_default_admin():
-    """Create a default admin user for testing purposes"""
     try:
-        admin_email = "admin@smartdoc.com"
         users_collection = get_users_collection()
-        
+
         if users_collection is None:
-            print("⚠️  Skipping admin user creation (MongoDB not available)")
             return
-        
-        existing_admin = await users_collection.find_one({"email": admin_email})
-        if not existing_admin:
-            admin_user = UserModel(
-                full_name="System Administrator",
-                email=admin_email,
-                hashed_password=hash_password("admin123"),
-                role="admin",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
-            )
-            await users_collection.insert_one(admin_user.dict(by_alias=True))
-            print(f"Default admin user created: {admin_email} / admin123")
-        else:
-            # Ensure the existing admin remains accessible in development
-            from bson import ObjectId
-            await users_collection.update_one(
-                {"_id": existing_admin["_id"]},
-                {
-                    "$set": {
-                        "role": "admin",
-                        "is_active": True,
-                        "hashed_password": hash_password("admin123"),
-                        "updated_at": datetime.utcnow(),
-                    }
-                }
-            )
-            print(f"Default admin ensured/updated: {admin_email} / admin123")
+
+        admin_email = "admin@smartdoc.com"
+
+        existing_admin = await users_collection.find_one({
+            "email": admin_email
+        })
+
+        if existing_admin:
+            return
+
+        admin_user = UserModel(
+            full_name="System Administrator",
+            email=admin_email,
+            hashed_password=hash_password("admin123"),
+            role="admin",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        await users_collection.insert_one(
+            admin_user.dict(by_alias=True)
+        )
+
+        print("Default admin created")
+
     except Exception as e:
-        print(f"⚠️  Failed to create default admin (likely MongoDB not available): {e}")
-        # Don't raise - allow app to continue without admin user
+        print(f"Admin creation failed: {e}")
