@@ -81,26 +81,6 @@ export const authService = {
   },
 };
 
-
-// ================= HISTORY SERVICE =================
-
-export const historyService = {
-  getHistory: async () => {
-    const response = await api.get(
-      "/api/history"
-    );
-    return response.data;
-  },
-
-  deleteHistoryItem: async (id) => {
-    const response = await api.delete(
-      `/api/history/${id}`
-    );
-    return response.data;
-  },
-};
-
-
 // ================= UPLOAD SERVICE =================
 
 export const uploadService = {
@@ -171,6 +151,24 @@ export const demoService = {
       data
     );
 
+    return response.data;
+  },
+};
+
+// ================= HISTORY SERVICE =================
+
+export const historyService = {
+  getHistory: async () => {
+    const response = await api.get(
+      "/api/history"
+    );
+    return response.data;
+  },
+
+  deleteHistoryItem: async (id) => {
+    const response = await api.delete(
+      `/api/history/${id}`
+    );
     return response.data;
   },
 };
