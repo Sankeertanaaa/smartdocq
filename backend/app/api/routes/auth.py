@@ -1,3 +1,50 @@
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+)
+
+from fastapi.security import (
+    HTTPBearer,
+    HTTPAuthorizationCredentials,
+)
+
+from datetime import (
+    datetime,
+    timedelta,
+)
+
+from typing import Optional
+
+from pydantic import (
+    BaseModel,
+    EmailStr,
+)
+
+import bcrypt
+import jwt
+import os
+
+from bson import ObjectId
+
+from app.core.config import settings
+
+from app.models.schemas import (
+    User,
+    UserCreate,
+    UserLogin,
+    Token,
+    UserResponse,
+)
+
+from app.models.mongodb_models import (
+    UserModel,
+)
+
+from app.services.database import (
+    get_users_collection,
+)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
