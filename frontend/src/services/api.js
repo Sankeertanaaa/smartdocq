@@ -8,72 +8,106 @@ console.log("API BASE URL:", API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
+
+// ================= REQUEST INTERCEPTOR =================
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("token");
 
     console.log(
-      "FULL API URL:",
-      `${config.baseURL}${config.url}`
+      "TOKEN FROM STORAGE:",
+      token
     );
 
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization =
+        `Bearer ${token}`;
     }
+
+    console.log(
+      "REQUEST URL:",
+      `${config.baseURL}${config.url}`
+    );
+
+    console.log(
+      "REQUEST HEADERS:",
+      config.headers
+    );
 
     return config;
   },
   (error) => Promise.reject(error)
 );
 
+// ================= RESPONSE INTERCEPTOR =================
+
 api.interceptors.response.use(
   (response) => response,
+
   (error) => {
-    console.error("API Error:", error);
+    console.error(
+      "API Error:",
+      error
+    );
+
+    // AUTO LOGOUT ON 401
+    if (
+      error.response?.status === 401
+    ) {
+      console.warn(
+        "401 detected - clearing auth"
+      );
+
+      localStorage.removeItem(
+        "token"
+      );
+
+      localStorage.removeItem(
+        "user"
+      );
+    }
+
     return Promise.reject(error);
   }
 );
-
 
 // ================= AUTH SERVICE =================
 
 export const authService = {
   register: async (userData) => {
-    console.log(
-    "REGISTER FULL URL:",
-    `${API_BASE_URL}/api/auth/register`);
     const response = await api.post(
-    "/api/auth/register",
-    userData);
+      "/api/auth/register",
+      userData
+    );
+
     return response.data;
   },
-  
+
   login: async (credentials) => {
-    console.log(
-    "LOGIN FULL URL:",
-    `${API_BASE_URL}/api/auth/login`);
     const response = await api.post(
       "/api/auth/login",
-      credentials);
-      return response.data;
-    },
-    
-    verifyToken: async () => {
-      const response = await api.get(
-        "/api/auth/verify");
-      
-      return response.data;
-    },
+      credentials
+    );
+
+    return response.data;
+  },
+
+  verifyToken: async () => {
+    const response = await api.get(
+      "/api/auth/verify"
+    );
+
+    return response.data;
+  },
 
   logout: async () => {
     const response = await api.post(
       "/api/auth/logout"
     );
+
     return response.data;
   },
 
@@ -81,6 +115,7 @@ export const authService = {
     const response = await api.get(
       "/api/auth/me"
     );
+
     return response.data;
   },
 };
@@ -88,7 +123,9 @@ export const authService = {
 // ================= UPLOAD SERVICE =================
 
 export const uploadService = {
-  uploadDocument: async (formData) => {
+  uploadDocument: async (
+    formData
+  ) => {
     const response = await api.post(
       "/api/upload",
       formData,
@@ -103,7 +140,6 @@ export const uploadService = {
     return response.data;
   },
 };
-
 
 // ================= CHAT SERVICE =================
 
@@ -150,7 +186,9 @@ export const demoService = {
     return response.data;
   },
 
-  askDemoQuestion: async (data) => {
+  askDemoQuestion: async (
+    data
+  ) => {
     const response = await api.post(
       "/api/demo/chat",
       data
@@ -179,7 +217,9 @@ export const historyService = {
     return response.data;
   },
 
-  deleteHistoryItem: async (id) => {
+  deleteHistoryItem: async (
+    id
+  ) => {
     const response = await api.delete(
       `/api/history/${id}`
     );
